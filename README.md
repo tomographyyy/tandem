@@ -1,4 +1,4 @@
-# tandem
+# TANDEM
 Tsunami Analysis code on Nonlinear Dispersive wave equation on the Earth Model
 
 # Technical References
