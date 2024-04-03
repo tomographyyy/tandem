@@ -10,6 +10,6 @@ setup(
     description="Tsunami Adjoint Simulator",
     author='Tomohiro TAKAGAWA',
     packages=find_packages(),
-    license='Apache-2.0'
+    license='Apache-2.0',
     install_requires=load_requires_from_file("requirements.txt")
 )
