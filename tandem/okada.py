@@ -17,7 +17,20 @@ limitations under the License.
 import numpy as np
 from pyproj import Geod
 class Okada(object):
+    """Class for calculation of surface deformation in spherical coordinate system
+    Okada, Y. (1985). Surface deformation due to shear and tensile faults in a half-space. 
+        Bulletin of the Seismological Society of America, 75(4), 1135–1154. https://doi.org/10.1785/BSSA0750041135
+    Okada, Y. (1992). Internal deformation due to shear and tensile faults in a half-space. 
+        Bulletin of the Seismological Society of America, 82(2), 1018–1040. https://doi.org/10.1785/BSSA0820021018
+    """
     def __init__(self, lons, lats, ellps="WGS84", Poisson=0.25):
+        """init
+        Args:
+            lons (1d array): target longitudes [degree].
+            lats (1d array): target latitudes  [degree].
+            ellps (str, optional): ellipsoid name. Defaults to "WGS84".
+            Poisson (float, optional): Poisson's ratio. Defaults to 0.25.
+        """
         self.lons, self.lats = np.meshgrid(lons, lats)
         self.geod = Geod(ellps=ellps)
         self.Poisson = Poisson
@@ -83,7 +96,7 @@ class Okada(object):
         u1_strike, u1_dipslip = self.okada_local(x, y, depth, AL, dip, AW)
         ux, uy, uz = displacement * (u1_strike * np.cos(np.deg2rad(rake)) 
                                 + u1_dipslip * np.sin(np.deg2rad(rake)))
-        uE = ux * np.sin(np.deg2rad(strike)) - uy * np.cos(np.deg2rad(strike)) # correctec
+        uE = ux * np.sin(np.deg2rad(strike)) - uy * np.cos(np.deg2rad(strike)) # corrected
         uN = ux * np.cos(np.deg2rad(strike)) + uy * np.sin(np.deg2rad(strike)) # corrected
         return uE, uN, uz
     def u_global(self, lonR, latR, strike, depth, AL, AW,
