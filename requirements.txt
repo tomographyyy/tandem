@@ -2,4 +2,7 @@ numpy
 pyproj
 mpi4py
 Cython
+pandas
+obspy
+scipy
 
