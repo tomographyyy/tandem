@@ -1,2 +1,3 @@
 from .okada import Okada
-__all__ = ["Okada"]
+from .decompi import DecoratorMPI
+__all__ = ["Okada", "DecoratorMPI"]
