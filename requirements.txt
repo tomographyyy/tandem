@@ -1,6 +1,7 @@
 numpy
 pyproj
 mpi4py
+Cython
 petsc
 petsc4py
 
