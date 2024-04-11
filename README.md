@@ -6,7 +6,7 @@ Tsunami Adjoint simulator for Nonpoint sources with Dispersive wave equations on
 
 # How to install
 1. Install openmpi
-1. Install petsc4py by configure & make (Recommended)
+1. Install petsc4py
 ``` sh
 ./configure --with-mpi-dir=/usr/local/openmpi-4.0.7 --with-fc=0 --download-f2cblaslapack=1 --download-petsc4py=1
 make PETSC_DIR=$HOME/.local/petsc PETSC_ARCH=arch-linux-c-debug all
@@ -21,3 +21,4 @@ Then,
 source ~/.bashrc
 python -m pip install git+https://github.com/tomographyyy/tandem.git
 ```
+
