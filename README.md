@@ -1,6 +1,6 @@
 # TANDEM
 [![DOI](https://zenodo.org/badge/520028555.svg)](https://zenodo.org/doi/10.5281/zenodo.10963819)  
-Tsunami Adjoint simulator for Nonpoint sources with Dispersive wave equations on a self-gravitating Earth Model  
+**T**sunami **A**djoint simulator for **N**onpoint sources with **D**ispersive wave equations on a self-gravitating **E**arth **M**odel  
 
 
 ## Technical References
