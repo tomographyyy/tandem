@@ -1,6 +1,6 @@
 # TANDEM
 [![DOI](https://zenodo.org/badge/520028555.svg)](https://zenodo.org/doi/10.5281/zenodo.10963819)  
-**T**sunami **A**djoint simulator for **N**onpoint sources with **D**ispersive wave equations on a self-gravitating **E**arth **M**odel  
+**T**sunami **A**djoint simulator for **N**onpoint sources using **D**ispersive wave equations on a self-gravitating **E**arth **M**odel  
 
 
 ## Technical References
