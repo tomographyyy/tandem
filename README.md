@@ -5,7 +5,7 @@ Tsunami Adjoint simulator for Nonpoint sources with Dispersive wave equations on
 - Takagawa, T., Allgeyer, S. & Cummins, P., Adjoint Synthesis for Trans-oceanic Tsunami Waveforms and Simultaneous Inversion of Fault Geometry and Slip Distribution (submitted) 
 
 ## How to install
-tandem can be installed in the following 7 steps.
+tandem can be installed in the following 7 steps. This is an example for Ubuntu. Windows users are recommended to use WSL (Windows Subsystem for Linux).
 
 ### 1. gfortran & pip
 ```sh
