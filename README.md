@@ -7,7 +7,7 @@ Tsunami Adjoint simulator for Nonpoint sources with Dispersive wave equations on
 ## How to install
 TANDEM can be installed in the following 7 steps. This is an example for Ubuntu. Windows users are recommended to use WSL (Windows Subsystem for Linux).
 
-### 1. gfortran & pip
+#### 1. gfortran & pip
 ```sh
 sudo apt update
 sudo apt-get update
@@ -16,13 +16,13 @@ sudo apt install build-essential
 sudo apt install gfortran
 ```
 
-### 2. Numpy
+#### 2. Numpy
 
 ```sh
 python -m pip install --user numpy
 ```
 
-### 3. FFTW
+#### 3. FFTW
 
 ```sh
 cd /tmp
@@ -43,7 +43,7 @@ sudo ldconfig # update the library link
 ldconfig -p | grep libfftw # check the library link
 ```
 
-### 4. Shtns
+#### 4. Shtns
 
 ```sh
 cd /tmp
@@ -56,7 +56,7 @@ make -j8
 sudo -E python setup.py install # -E option is needed for super user to find numpy module 
 ```
 
-### 5. OpenMPI
+#### 5. OpenMPI
 
 ```sh
 cd /tmp
@@ -74,7 +74,7 @@ mpicc -v
 mpiexec --version
 ```
 
-### 6. petsc4py
+#### 6. petsc4py
 
 ```sh
 # install requirements
@@ -104,7 +104,7 @@ source ~/.bashrc
 sudo make install
 ```
 
-### 7. TANDEM
+#### 7. TANDEM
 
 ```sh
 python -m pip install git+https://github.com/tomographyyy/tandem.git
