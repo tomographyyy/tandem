@@ -88,22 +88,24 @@ wget https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-3.
 tar xf petsc-3.21.0.tar.gz
 cd petsc-3.21.0/
 ./configure --help
-./configure --download-petsc4py=1
+sudo mkdir /opt/petsc
+sudo chown $USER /opt/petsc
+./configure --prefix=/opt/petsc --download-hypre --download-petsc4py=1
 
 # This may take several minutes.
-make -j8 PETSC_DIR=/tmp/petsc-3.21.0 PETSC_ARCH=arch-linux-c-debug all 
+make -j8 PETSC_DIR=/tmp/petsc-3.21.0 PETSC_ARCH=arch-linux-c-debug all
+make PETSC_DIR=/tmp/petsc-3.21.0 PETSC_ARCH=arch-linux-c-debug install
 # output
 =====================================
-To use petsc4py, add /tmp/petsc-3.21.0/arch-linux-c-debug/lib to PYTHONPATH
+To use petsc4py, add /opt/petsc/lib to PYTHONPATH
 =====================================
 
 nano ~/.bashrc
 -----
-export PYTHONPATH=/tmp/petsc-3.21.0/arch-linux-c-debug/lib
+export PYTHONPATH=/opt/petsc/lib
 -----
 source ~/.bashrc
 
-sudo make install
 ```
 
 #### 7. TANDEM
