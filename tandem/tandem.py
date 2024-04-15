@@ -19,12 +19,12 @@ import sys
 import os
 import numpy as np
 from mpi4py import MPI
-from tandem_stag.ocean import Ocean
-from tandem_stag.solidearth import SolidEarth
-from tandem_stag.okada import Okada
+from tandem.ocean import Ocean
+from tandem.solidearth import SolidEarth
+from tandem.okada import Okada
 from mpi4py import MPI
 import xarray as xr
-from tandem_stag.decompi import DecoratorMPI
+from tandem.decompi import DecoratorMPI
 import cProfile
 decompi = DecoratorMPI()
 

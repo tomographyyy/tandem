@@ -17,10 +17,10 @@ limitations under the License.
 from petsc4py import PETSc
 import time
 import numpy as np
-from tandem_stag.solidearth import SolidEarth
-from tandem_stag.dmstag import DMStagDA, DMDAHierarchy, DMStagVariableSet, DMStagBase, DMDAStencil
-from tandem_stag.station import Station, Angle
-from tandem_stag.okada import Okada
+from tandem.solidearth import SolidEarth
+from tandem.dmstag import DMStagDA, DMDAHierarchy, DMStagVariableSet, DMStagBase, DMDAStencil
+from tandem.station import Station, Angle
+from tandem.okada import Okada
 from pyproj import Geod
 import xarray as xr
 import os

@@ -17,7 +17,7 @@ limitations under the License.
 import numpy as np
 from petsc4py import PETSc
 from petsc4py.PETSc import DMStag
-from tandem_stag.xslice import SliceEx
+from tandem.xslice import SliceEx
 
 class DMDAWrapper(object):
     def __init__(self, local=False):
