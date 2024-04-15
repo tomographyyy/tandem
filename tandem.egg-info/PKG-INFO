@@ -2,8 +2,11 @@ Metadata-Version: 2.1
 Name: tandem
 Version: 0.0.1
 Summary: Tsunami Adjoint Simulator
+Home-page: UNKNOWN
 Author: Tomohiro TAKAGAWA
 License: Apache-2.0
+Platform: UNKNOWN
 License-File: LICENSE
-Requires-Dist: numpy
-Requires-Dist: pyproj
+
+UNKNOWN
+

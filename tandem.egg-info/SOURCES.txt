@@ -2,7 +2,15 @@ LICENSE
 README.md
 setup.py
 tandem/__init__.py
+tandem/decompi.py
+tandem/dmstag.py
+tandem/generate_settings.py
+tandem/ocean.py
 tandem/okada.py
+tandem/solidearth.py
+tandem/station.py
+tandem/tandem.py
+tandem/xslice.py
 tandem.egg-info/PKG-INFO
 tandem.egg-info/SOURCES.txt
 tandem.egg-info/dependency_links.txt

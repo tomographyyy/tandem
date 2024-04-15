@@ -1,2 +1,8 @@
+Cython
 numpy
+obspy
+pandas
 pyproj
+scipy
+shtns
+xarray

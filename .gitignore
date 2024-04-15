@@ -1,0 +1,4 @@
+**/__pycache__/**
+tandem.egg-info/**
+build
+.git
