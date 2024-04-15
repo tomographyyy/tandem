@@ -3,3 +3,4 @@ tandem.egg-info/**
 *pyc
 build/**
 .git
+*.sh
