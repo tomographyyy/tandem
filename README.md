@@ -58,7 +58,7 @@ make -j8
 sudo -E python setup.py install # -E option is needed for super user to find numpy module 
 ```
 
-#### 5. OpenMPI
+#### 5. OpenMPI & mpi4py
 
 ```sh
 cd /tmp
@@ -74,9 +74,12 @@ sudo ldconfig # update the library link
 # check installation
 mpicc -v
 mpiexec --version
+
+# mpi4py
+python -m pip install mpi4py
 ```
 
-#### 6. petsc4py
+#### 6. petsc & petsc4py
 
 ```sh
 # install requirements

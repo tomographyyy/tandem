@@ -6,4 +6,5 @@ from .station import Angle, Station
 from .solidearth import SolidEarth
 from .ocean import Ocean
 from .tandem import Tandem
-__all__ = ["Okada", "DecoratorMPI", "SliceEx",]
+import generate_settings
+__all__ = ["Okada", "DecoratorMPI", "SliceEx","Tandem"]
