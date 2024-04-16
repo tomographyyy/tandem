@@ -223,6 +223,7 @@ class Tandem(object):
                 #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
             #values = self.ocean.h.get_values(ij_list)
             values = self.ocean.get_hMNUV(ij_list)
+            print("values: ", values.shape)
             #print(f"ij_list:{ij_list}")
             #values = self.ocean.get_filtered_h(ij_list)
             self.ocean.station.record(step, values)

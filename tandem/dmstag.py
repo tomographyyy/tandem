@@ -354,6 +354,7 @@ class DMDAHierarchy(DMDAWrapper):
         # print(self.rank, flush=True)
         if self.rank==0:
             (NX,NY) = self.levels[-1].sizes
+            print("dmstag L357: ", cda, NX, NY, z_coarse.shape, z_coarse_rank0.getSize())
             z_coarse_wide = np.zeros((NY, NX), dtype=np.float64)
             z_coarse_wide[:z_coarse.shape[0],:z_coarse.shape[1]] = z_coarse
             z_coarse_rank0[:] = z_coarse_wide
