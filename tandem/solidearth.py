@@ -28,7 +28,7 @@ class SolidEarth:
         if MPI.COMM_WORLD.rank==0:
             self.conj = True
             self.ocean = ocean
-            csvfile = "Greens function with SAL effects with sign correction.csv"
+            csvfile = "data/Greens_function_of_SAL_effects.csv"
             df_GreensFunc = pandas.read_csv(csvfile, comment='#')
             thetaRad=np.array(list(df_GreensFunc["theta[deg]"]))*(np.pi/180)
             thetaRad[0]=0.0 # set the initial data point to zero

@@ -170,8 +170,6 @@ class Ocean(object):
         rx = self.R * self.dx * np.min(np.cos(self.yM))
         ry = self.R * self.dy
         self.stencil_width = int(np.floor(filter_radius / np.minimum(rx, ry)))
-        if self.rank==0:
-            print("stencil_width", self.stencil_width)
         self.h_stencil = DMDAStencil() 
         self.h_stencil.setup(self.h, stencil_width=self.stencil_width)
 

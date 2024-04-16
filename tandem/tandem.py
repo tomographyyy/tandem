@@ -118,17 +118,13 @@ class Tandem(object):
         print("cos  ", np.min(np.cos(self.ocean.yN)))
         print("lmin ", lmin)
         print("dt   ", self.dt, "dtmax", lmin / np.sqrt(gmax * dmax))
+        print("CLV  ", self.CLV)
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$", flush=True)
 
         if self.CLV > 0:
             sh_n = 675 # int(np.round(675 * 2**(5 - self.CLV)))
             earth = SolidEarth(self.ocean, GID=True, sh_n=sh_n, IGF=False)
             self.ocean.set_solid_earth(earth)
-            print("CLV=", self.CLV, earth)
-
-    @decompi.finalize
-    def depth_random(self, x, y):
-        return np.random.rand(x.shape)
 
     @decompi.finalize
     def main(self):
@@ -177,7 +173,7 @@ class Tandem(object):
             #self.ocean.add_raised_cosine(variable=self.ocean.h, 
             #                            i=i_src, j=j_src, amplitude=amplitude, radius=200e3)
         #self.ocean.save_xr_dataset_in_parallel("tandem_stag_0")
-        time_integration_type = "long"
+        time_integration_type = "short"
         if time_integration_type == "long":
             step_max = int((3600 * 9) / self.dt)  + 1
             step_interval = int(np.round(30 / self.dt))
@@ -226,8 +222,9 @@ class Tandem(object):
                 #xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
                 #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
             #values = self.ocean.h.get_values(ij_list)
+            values = self.ocean.get_hMNUV(ij_list)
             #print(f"ij_list:{ij_list}")
-            values = self.ocean.get_filtered_h(ij_list)
+            #values = self.ocean.get_filtered_h(ij_list)
             self.ocean.station.record(step, values)
             if step % step_interval==0:
                 idx_chunk = (step % save_interval) // step_interval

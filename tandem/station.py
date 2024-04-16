@@ -139,7 +139,7 @@ class Station(object):
 
     def record(self, step, values):
         if values.shape[0]>0:
-            self.logger[:,:, step] = values # (nstation, nvalue=5, nstep)
+            self.logger[:, 5, step] = values # (nstation, nvalues, nstep)
     
     def save_timeseries(self, filename):
         if len(self.dataframe) > 0:
