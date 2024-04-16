@@ -97,7 +97,7 @@ class DMDAWrapper(object):
         self.local_to_local()
     def set_meanx(self, src, boundary_type="none", positive_restriction=False):
         dst = self
-        if boundary_type is not "none":
+        if boundary_type != "none":
             src.set_boundary(boundary_type=boundary_type)
         (iMin, iMax), (jMin, jMax) = dst.da.getRanges()
         nx, _ = dst.da.getSizes()
@@ -126,7 +126,7 @@ class DMDAWrapper(object):
             raise Exception(message)
     def set_meany(self, src, boundary_type="none", positive_restriction=False):
         dst = self
-        if boundary_type is not "none":
+        if boundary_type != "none":
             src.set_boundary(boundary_type=boundary_type)
         (iMin, iMax), (jMin, jMax) = dst.da.getRanges()
         _, ny = dst.da.getSizes()
@@ -152,7 +152,7 @@ class DMDAWrapper(object):
             raise Exception(message)
     def set_diffx(self, src, boundary_type="none"):
         dst = self
-        if boundary_type is not "none":
+        if boundary_type != "none":
             src.set_boundary(boundary_type=boundary_type)
         (iMin, iMax), (jMin, jMax) = dst.da.getRanges()
         nx, ny = dst.da.getSizes()
@@ -171,7 +171,7 @@ class DMDAWrapper(object):
             raise Exception(message)
     def set_diffy(self, src, boundary_type="none"):
         dst = self
-        if boundary_type is not "none":
+        if boundary_type != "none":
             src.set_boundary(boundary_type=boundary_type)
         (iMin, iMax), (jMin, jMax) = dst.da.getRanges()
         nx, ny = dst.da.getSizes()

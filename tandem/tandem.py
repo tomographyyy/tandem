@@ -56,7 +56,7 @@ class Tandem(object):
         #self.RSL = self.resolution // 30
         #self.RLV = int(np.round(np.log2(self.RSL)))
         area_type = "all"#"all"
-        if area_type is "small":
+        if area_type == "small":
             #self.NX = 28 * 60 * 60 // self.resolution #180 * 8 // self.RSL#30*4
             #self.NY = 36 * 60 * 60 // self.resolution #8 // self.RSL#30*4 
             #self.shape = (self.NX, self.NY)
@@ -65,13 +65,13 @@ class Tandem(object):
             self.NY = 8 * 60 * 60 // self.resolution #8 // self.RSL#30*4 
             self.shape = (self.NX, self.NY)
             self.extent = np.deg2rad([224, 232, 56, 48]) ### [xmin, xmax, ymax, ymin]
-        elif area_type is "north":
+        elif area_type == "north":
             _range = [188, 240, 64, 36]
             self.NX = (_range[1]-_range[0]) * 60 * 60 // self.resolution
             self.NY = (_range[2]-_range[3]) * 60 * 60 // self.resolution
             self.shape = (self.NX, self.NY)
             self.extent = np.deg2rad(_range) ### [xmin, xmax, ymax, ymin]
-        elif area_type is "northeast":
+        elif area_type == "northeast":
             _range = [192, 240, 64, 32]
             self.NX = (_range[1]-_range[0]) * 60 * 60 // self.resolution
             self.NY = (_range[2]-_range[3]) * 60 * 60 // self.resolution
@@ -438,11 +438,11 @@ class Tandem(object):
             #                            i=i_src, j=j_src, amplitude=amplitude, radius=200e3)
         #self.ocean.save_xr_dataset_in_parallel("tandem_stag_0")
         time_integration_type = "long"
-        if time_integration_type is "long":
+        if time_integration_type == "long":
             step_max = int((3600 * 9) / self.dt)  + 1
             step_interval = int(np.round(30 / self.dt))
             save_interval = int(np.round(3600 / self.dt)) 
-        elif time_integration_type is "mid":
+        elif time_integration_type == "mid":
             step_max = int((3600 * 3) / self.dt)  + 1
             step_interval = int(np.round(30 / self.dt))
             save_interval = int(np.round(3600 / self.dt)) 
