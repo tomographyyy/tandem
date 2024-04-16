@@ -26,20 +26,20 @@ from mpi4py import MPI
 import xarray as xr
 from tandem.decompi import DecoratorMPI
 import cProfile
+import pandas
+
 decompi = DecoratorMPI()
 
 class Tandem(object):
     @decompi.finalize
-    def __init__(self, outpath="", job_id="0000000", job_name="tandem"):
+    def __init__(self, outpath="out", job_id="0000000", job_name="forward_C1S1B1GR030_TakagawaZSlip3_Manning0.000"):
         print("outpath:", outpath)
         print("job_id:", job_id)
         print("job_name:", job_name, flush=True)
         self.outpath = outpath
+        os.makedirs(self.outpath, exist_ok=True)
         self.job_id = job_id
         self.Nonlinear = "_NL" in job_name
-        self.remove_land = False
-        if "_rmland" in job_name:
-            self.remove_land = float(job_name.split("_rmland")[1][:4])
         print("Nonlinear:", self.Nonlinear, flush=True)
         self.job_name, job_option, source_option, manning_option = job_name.split("_")[:4]
         print("manning_option:", manning_option, flush=True)
@@ -48,50 +48,21 @@ class Tandem(object):
         self.BSQ = "B1" in job_option
         self.comm = MPI.COMM_WORLD
         self.rank = self.comm.rank
-        if "R" in job_option:
-            self.resolution = int(job_option.split("R")[1])
-        else:
-            self.resolution = 120 #120 # 240 # arcsec
-        Manning = float(manning_option[7:])
-        #self.RSL = self.resolution // 30
-        #self.RLV = int(np.round(np.log2(self.RSL)))
-        area_type = "all"#"all"
-        if area_type == "small":
-            #self.NX = 28 * 60 * 60 // self.resolution #180 * 8 // self.RSL#30*4
-            #self.NY = 36 * 60 * 60 // self.resolution #8 // self.RSL#30*4 
-            #self.shape = (self.NX, self.NY)
-            #self.extent = np.deg2rad([180+16*2, 240, 64, 12+16]) ### [xmin, xmax, ymax, ymin]
-            self.NX = 8 * 60 * 60 // self.resolution #180 * 8 // self.RSL#30*4
-            self.NY = 8 * 60 * 60 // self.resolution #8 // self.RSL#30*4 
-            self.shape = (self.NX, self.NY)
-            self.extent = np.deg2rad([224, 232, 56, 48]) ### [xmin, xmax, ymax, ymin]
-        elif area_type == "north":
-            _range = [188, 240, 64, 36]
-            self.NX = (_range[1]-_range[0]) * 60 * 60 // self.resolution
-            self.NY = (_range[2]-_range[3]) * 60 * 60 // self.resolution
-            self.shape = (self.NX, self.NY)
-            self.extent = np.deg2rad(_range) ### [xmin, xmax, ymax, ymin]
-        elif area_type == "northeast":
-            _range = [192, 240, 64, 32]
-            self.NX = (_range[1]-_range[0]) * 60 * 60 // self.resolution
-            self.NY = (_range[2]-_range[3]) * 60 * 60 // self.resolution
-            self.shape = (self.NX, self.NY)
-            self.extent = np.deg2rad(_range) ### [xmin, xmax, ymax, ymin]
-        else:
-            self.NX = 76 * 60 * 60 // self.resolution #180 * 8 // self.RSL#30*4
-            self.NY = 68 * 60 * 60 // self.resolution #8 // self.RSL#30*4 
-            self.shape = (self.NX, self.NY)
-            self.extent = np.deg2rad([180-16, 240, 64, 12-16]) ### [xmin, xmax, ymax, ymin]
+        self.resolution = 8 * 60 # arcsec
+        Manning = float(manning_option[7:]) # Manning 0.025
+
+        self.NX = 76 * 60 * 60 // self.resolution
+        self.NY = 68 * 60 * 60 // self.resolution 
+        self.shape = (self.NX, self.NY)
+        self.extent = np.deg2rad([180-16, 240, 64, 12-16]) ### [xmin, xmax, ymax, ymin]
         if self.SAL:
-            if self.resolution==120:
-                self.CLV = 3
-            elif self.resolution==60:
-                self.CLV = 4
-            elif self.resolution==30:
-                self.CLV = 5
-            #self.CLV = 4 #3 #5 - self.RLV #0 #5 # 1: shn=1350, 2: shn=675
+            if self.resolution in [15,30,60,120,240,480]:
+                self.CLV = int(np.log2(480 // self.resolution)) + 1
+            else:
+                raise ValueError("resolution must be one of 15, 30, 60, 120, 240 and 480.")
         else:
             self.CLV = 0
+        
         if self.job_name == "forward":
             filter_radius = 1#200e3 #500e3 #5e3
         else:
@@ -99,273 +70,47 @@ class Tandem(object):
         self.ocean = Ocean(self.shape, extent=self.extent, damping_factor=0.1*1,
                             CLV=self.CLV, has_Boussinesq=self.BSQ,
                             outpath=self.outpath, filter_radius=filter_radius, 
-                            Manning=Manning, Nonlinear=self.Nonlinear)         # $$$$$$$$$$$$$$$$$$$$ Manning (0.025)$$$$$$$$$$$$$$$$$$$$$$$$$$$
-        filename = "gebco/GEBCO_2019_030sec_minimum_NorthPacific_correction_Canada_LA_Oahu_*.nc"
-        #filename = "OpenTsunami15sec_chunks/WholeJapan2020*_*.nc"
+                            Manning=Manning, Nonlinear=self.Nonlinear)
+        filename = "data/gebco2023_8min_median/GEBCO*.nc"
         self.ocean.load_bathymetry(filename, depth=False, lon="lon", lat="lat", z="elevation")
-        #self.ocean.set_random(variable=self.ocean.d, min=-0.05, max=0.95, seed=1)
-        #self.ocean.set_random(variable=self.ocean.d, min=1.0, max=1.0, seed=1)
-        #xmin = np.min(self.ocean.xN)
-        #xmax = np.max(self.ocean.xN)
-        #ymin = np.min(self.ocean.yM)
-        #ymax = np.max(self.ocean.yN)
-        #ax = 4000 / (xmax - xmin) * 1
-        #ay = 4000 / (ymax - ymin) * 1
-        #xmid = np.deg2rad(180)
-        #ymid = np.deg2rad(40)
-        #####################
-        # depth
-        #####################
-        if False: # depth defined by function
-            self.ocean.set_values_by_func(variable=self.ocean.d, 
-                #func = lambda x, y: 1) # uniform
-                #func = lambda x, y: (1 + x / 0.14 ) / 2) # linear x
-                #func = lambda x, y: 0.01 + 0.99 * (x + 0.07) / 0.14   # linear x 100
-                #func = lambda x, y: (1 + (x + y) / 0.14 ) / 2 # linear xy
-                # func = lambda x, y: 10 + ax * (x - xmin) + ay * (y - ymin)  # linear xy
-                #func = lambda x, y: 3990 * ((y-ymid) < (x-xmid) / 64) + 200  # shelf
-                func = lambda x, y: 4000  # uniform
-                #func = lambda x, y: (1 + (x + y > 0)) / 2 # step xy
-                #func = lambda x, y: (1 + (x > 0)) / 2 # step x
-                #func = lambda x, y: 0.01 * (x < 0) + 0.99 * (x >= 0) # step x 100
-                )#"""
-        if False: # depth with a line reflector
-            (i0, i1), (j0, j1) = self.ocean.d.da.getRanges()
-            self.ocean.d.vecArray[i0:i1,j0:j1] = 4000
-            i_slc = slice(np.maximum(0, i0), np.minimum(self.NX//2, i1))
-            j_slc = slice(np.maximum(self.NY//2, j0), np.minimum(self.NY//2 + 1, j1))
-            self.ocean.d.vecArray[i_slc, j_slc] = -100
-            self.ocean.d.local_to_local()
-        if False: # depth with parallel reflectors
-            (i0, i1), (j0, j1) = self.ocean.d.da.getRanges()
-            self.ocean.d.vecArray[i0:i1,j0:j1] = 4000
-            if i0<=120<i1:
-                self.ocean.d.vecArray[120,j0:j1] = -100
-            if i0<=240<i1:
-                self.ocean.d.vecArray[240,j0:j1] = -100
-            self.ocean.d.local_to_local()
-        if False: # double atolls
-            (i0, i1), (j0, j1) = self.ocean.d.da.getRanges()
-            self.ocean.d.vecArray[i0:i1,j0:j1] = 4000
-            self.ocean.d.local_to_local()
-            self.ocean.add_raised_cosine_xy(variable=self.ocean.d, 
-                lon=0, lat=+6, amplitude=-3990, radius=200e3)
-            self.ocean.add_raised_cosine_xy(variable=self.ocean.d, 
-                lon=0, lat=-6, amplitude=-3990, radius=200e3)
-        if False: # equally spaced atolls
-            (i0, i1), (j0, j1) = self.ocean.d.da.getRanges()
-            self.ocean.d.vecArray[i0:i1,j0:j1] = 4000
-            self.ocean.d.local_to_local()
-            for lat in range(-15,16,5):
-                for lon in range(-15,16,5):
-                    self.ocean.add_raised_cosine_xy(variable=self.ocean.d, 
-                        #lon=lon, lat=lat, amplitude=-3990, radius=200e3)
-                        lon=lon, lat=lat, amplitude=-8000, radius=200e3)
-        if False: # equally spaced atolls
-            (i0, i1), (j0, j1) = self.ocean.d.da.getRanges()
-            self.ocean.d.vecArray[i0:i1,j0:j1] = 4000
-            self.ocean.d.local_to_local()
-            for lat in range(-30,31,4):
-                for lon in range(-14,15,4):
-                    self.ocean.add_raised_cosine_xy(variable=self.ocean.d, 
-                        #lon=lon, lat=lat, amplitude=-3990, radius=200e3)
-                        lon=lon, lat=lat, amplitude=-8000, radius=200e3)
-        if False: # equally spaced atolls
-            (i0, i1), (j0, j1) = self.ocean.d.da.getRanges()
-            self.ocean.d.vecArray[i0:i1,j0:j1] = 4000
-            self.ocean.d.local_to_local()
-            for lat in range(-17,18,17):
-                for lon in range(-17,18,17):
-                    self.ocean.add_raised_cosine_xy(variable=self.ocean.d, 
-                        #lon=lon, lat=lat, amplitude=-3990, radius=200e3)
-                        lon=lon, lat=lat, amplitude=-8000, radius=100e3)
-
-        if self.remove_land:
-            (i0, i1), (j0, j1) = self.ocean.d.da.getRanges()
-            self.ocean.d.vecArray[i0:i1,j0:j1] = np.maximum(self.remove_land, self.ocean.d.vecArray[i0:i1,j0:j1])
-            self.ocean.d.local_to_local()
-
+        
         taper_width = 40 #// self.RSL * 4
         self.ocean.setup(taper_width=taper_width, 
-                                    station_csv="station_HaidaGwaii.csv",
+                                    station_csv="data/station_sample.csv",
                                     compressible=self.CMP)
-        if False: # final model (C1S1B1, 30sec delay, obs_length 780 min - InversionOkada75.ipynb)
-            self.ocean.setup_okada(lonR=360-132.247, 
-                                latR=52.426, 
-                                strike=314.2, 
-                                depth=20.6e3, 
-                                AL=[-94.2e3/2,94.2e3/2], 
-                                AW=[-18.4e3,0], 
-                                dip=33.4, 
-                                rake=101.4)
-        elif source_option=="Sheehan": # Sheehan et al
-            print("Sheehan")
-            self.ocean.setup_okada(lonR=360-131.7, 
-                                latR=52.1, 
-                                strike=314.0, 
-                                depth=1.0e3, 
-                                AL=[0,110.e3], 
-                                AW=[-50.0e3,0], 
-                                dip=25.0, 
-                                rake=100.0,
-                                displacement=2.5)
-        elif source_option=="Gusman": # Gusman et al
-            print("Gusman")
-            import pandas
-            df = pandas.read_csv("Gussman_param.csv", header=1)
-            params={}
-            params["lonR"]=list(360 + df["Lon."])
-            params["latR"]=list(df["#Lat."])
-            params["strike"]=list(df["strike"])
-            params["depth"]=list(df["depth"] * 1e3)
-            params["AL"]=[]
-            params["AW"]=[]
-            params["dip"]=list(df["dip"])
-            params["rake"]=list(df["rake"])
-            params["displacement"]=list(df["slip"])
-            for i in range(len(params["lonR"])):
-                params["AL"].append([0,15e3])
-                params["AW"].append([-15e3,0])
-            self.ocean.setup_okada(**params)
-        elif source_option=="Takagawa": # Takagawa 8x4
-            print("Takagawa 8x4")
-            import pandas
-            df = pandas.read_csv("Takagawa_param.csv", header=1)
-            params={}
-            params["lonR"]=list(360 + df["Lon."])
-            params["latR"]=list(df["#Lat."])
-            params["strike"]=list(df["strike"])
-            params["depth"]=list(df["depth"] * 1e3)
-            params["AL"]=[]
-            params["AW"]=[]
-            params["dip"]=list(df["dip"])
-            params["rake"]=list(df["rake"])
-            params["displacement"]=list(df["slip"])
-            for i in range(len(params["lonR"])):
-                params["AL"].append([0,15.984e3])
-                params["AW"].append([-9.678e3,0])
-            self.ocean.setup_okada(**params)
-        elif source_option=="TakagawaZSlip3": # Takagawa 8x4
-            print("Takagawa 8x4")
-            import pandas
-            df = pandas.read_csv("TakagawaZSlip3_param.csv", header=1)
-            params={}
-            params["lonR"]=list(360 + df["Lon."])
-            params["latR"]=list(df["#Lat."])
-            params["strike"]=list(df["strike"])
-            params["depth"]=list(df["depth"] * 1e3)
-            params["AL"]=[]
-            params["AW"]=[]
-            params["dip"]=list(df["dip"])
-            params["rake"]=list(df["rake"])
-            params["displacement"]=list(df["slip"])
-            for i in range(len(params["lonR"])):
-                #params["AL"].append([0,15.984e3])
-                #params["AW"].append([-9.678e3,0])
-                params["AL"].append([-15.984e3/2,15.984e3/2])
-                params["AW"].append([ -9.678e3/2, 9.678e3/2])
-            self.ocean.setup_okada(**params)
-        elif source_option=="TakagawaS": # Takagawa 8x4 shallow part only
-            print("Takagawa 8x4")
-            import pandas
-            df = pandas.read_csv("TakagawaS_param.csv", header=1)
-            params={}
-            params["lonR"]=list(360 + df["Lon."])
-            params["latR"]=list(df["#Lat."])
-            params["strike"]=list(df["strike"])
-            params["depth"]=list(df["depth"] * 1e3)
-            params["AL"]=[]
-            params["AW"]=[]
-            params["dip"]=list(df["dip"])
-            params["rake"]=list(df["rake"])
-            params["displacement"]=list(df["slip"])
-            for i in range(len(params["lonR"])):
-                params["AL"].append([0,15.984e3])
-                params["AW"].append([-9.678e3,0])
-            self.ocean.setup_okada(**params)
-        elif source_option=="TakagawaD": # Takagawa 8x4 deep part only
-            print("Takagawa 8x4")
-            import pandas
-            df = pandas.read_csv("TakagawaD_param.csv", header=1)
-            params={}
-            params["lonR"]=list(360 + df["Lon."])
-            params["latR"]=list(df["#Lat."])
-            params["strike"]=list(df["strike"])
-            params["depth"]=list(df["depth"] * 1e3)
-            params["AL"]=[]
-            params["AW"]=[]
-            params["dip"]=list(df["dip"])
-            params["rake"]=list(df["rake"])
-            params["displacement"]=list(df["slip"])
-            for i in range(len(params["lonR"])):
-                params["AL"].append([0,15.984e3])
-                params["AW"].append([-9.678e3,0])
-            self.ocean.setup_okada(**params)
-        elif source_option=="TakagawaHalfS": # Takagawa 8x4 deep part only
-            print("Takagawa 8x4")
-            import pandas
-            df = pandas.read_csv("TakagawaHalfS_param.csv", header=1)
-            params={}
-            params["lonR"]=list(360 + df["Lon."])
-            params["latR"]=list(df["#Lat."])
-            params["strike"]=list(df["strike"])
-            params["depth"]=list(df["depth"] * 1e3)
-            params["AL"]=[]
-            params["AW"]=[]
-            params["dip"]=list(df["dip"])
-            params["rake"]=list(df["rake"])
-            params["displacement"]=list(df["slip"])
-            for i in range(len(params["lonR"])):
-                params["AL"].append([0,15.984e3])
-                params["AW"].append([-9.678e3,0])
-            self.ocean.setup_okada(**params)
-        elif source_option=="TakagawaHalfD": # Takagawa 8x4 deep part only
-            print("Takagawa 8x4")
-            import pandas
-            df = pandas.read_csv("TakagawaHalfD_param.csv", header=1)
-            params={}
-            params["lonR"]=list(360 + df["Lon."])
-            params["latR"]=list(df["#Lat."])
-            params["strike"]=list(df["strike"])
-            params["depth"]=list(df["depth"] * 1e3)
-            params["AL"]=[]
-            params["AW"]=[]
-            params["dip"]=list(df["dip"])
-            params["rake"]=list(df["rake"])
-            params["displacement"]=list(df["slip"])
-            for i in range(len(params["lonR"])):
-                params["AL"].append([0,15.984e3])
-                params["AW"].append([-9.678e3,0])
-            self.ocean.setup_okada(**params)
-        else: # simplified Gusman model
-            print("simplified Gusman")
-            self.ocean.setup_okada(lonR=360-131.5, 
-                                latR=52, 
-                                strike=317, 
-                                depth=1e3, 
-                                AL=[0,165e3], 
-                                AW=[-60e3,0], 
-                                dip=18.5, 
-                                rake=103.3)
-        # print("===== station.dataframe rank=", self.rank, "=====")
-        # print(self.ocean.station.dataframe)
+
+        df = pandas.read_csv("data/fault_param_sample.csv", header=1)
+        params={}
+        params["lonR"]=list(360 + df["Lon."])
+        params["latR"]=list(df["#Lat."])
+        params["strike"]=list(df["strike"])
+        params["depth"]=list(df["depth"] * 1e3)
+        params["AL"]=[]
+        params["AW"]=[]
+        params["dip"]=list(df["dip"])
+        params["rake"]=list(df["rake"])
+        params["displacement"]=list(df["slip"])
+        for i in range(len(params["lonR"])):
+            params["AL"].append([-15.984e3/2,15.984e3/2])
+            params["AW"].append([ -9.678e3/2, 9.678e3/2])
+        self.ocean.setup_okada(**params)
 
         dmax = self.ocean.get_max(self.ocean.d)
         lx = self.ocean.dx * self.ocean.R * np.min(np.cos(self.ocean.yN))
         ly = self.ocean.dy * self.ocean.R
-        #lmin = np.minimum(lx, ly)#np.sqrt(lx**2 + ly**2)
-        #gmax = np.max(self.ocean.gN)
-        #self.dt = 0.99 * lmin / np.sqrt(2 * gmax * dmax)
-        lmin = lx * ly / (lx + ly)#np.sqrt(lx**2 + ly**2)
+        lmin = lx * ly / (lx + ly) #np.sqrt(lx**2 + ly**2)
         gmax = np.max(self.ocean.gN)
         self.dt = 0.99 * lmin / np.sqrt(gmax * dmax)
-        if self.resolution==120:
+        if self.resolution==480:
+            self.dt = np.minimum(self.dt, 12.0)
+        elif self.resolution==240:
+            self.dt = np.minimum(self.dt, 6.0)
+        elif self.resolution==120:
             self.dt = np.minimum(self.dt, 3.0)
         elif self.resolution==60:
             self.dt = np.minimum(self.dt, 1.5)
         elif self.resolution==30:
             self.dt = np.minimum(self.dt, 0.75)
-        #"""
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print("dx   ", self.ocean.dx)
         print("dy   ", self.ocean.dy)
@@ -374,7 +119,6 @@ class Tandem(object):
         print("lmin ", lmin)
         print("dt   ", self.dt, "dtmax", lmin / np.sqrt(gmax * dmax))
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$", flush=True)
-        #"""
 
         if self.CLV > 0:
             sh_n = 675 # int(np.round(675 * 2**(5 - self.CLV)))
@@ -388,10 +132,6 @@ class Tandem(object):
 
     @decompi.finalize
     def main(self):
-        #print(self.ocean.station.get_list_ij())
-        #print(self.ocean.station.get_list_stats())
-        #i_src_g = np.zeros([self.comm.Get_size(),1], dtype=np.int8)
-        #j_src_g = np.zeros([self.comm.Get_size(),1], dtype=np.int8)
         
         i_src = j_src = -1
         if self.job_name == "forward":

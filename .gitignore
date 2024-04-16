@@ -4,3 +4,4 @@ tandem.egg-info/**
 build/**
 .git
 *.sh
+out/**

@@ -4,6 +4,6 @@ Cython
 pandas
 obspy
 scipy
-xarray
+xarray[complete]
 shtns
 

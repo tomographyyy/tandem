@@ -176,7 +176,7 @@ class Ocean(object):
         self.h_stencil.setup(self.h, stencil_width=self.stencil_width)
 
     def load_bathymetry(self, filename, depth=False, lon="lon", lat="lat", z="z"):
-        nc = xr.open_mfdataset(filename, combine='by_coords', join="override")
+        nc = xr.open_mfdataset(filename, combine='by_coords', join="override", data_vars="minimal")
         x_src = np.deg2rad(nc[lon].data)
         y_src = np.deg2rad(nc[lat].data)
         x_extent = self.extent[:2]
