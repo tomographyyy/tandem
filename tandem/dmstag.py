@@ -389,7 +389,7 @@ class DMDAHierarchy(DMDAWrapper):
             z_coarse_rank0[:] = z_coarse_wide
             """
             nx1, ny1 = self.levels[-1].sizes
-            z_coarse_rank0[:] = self.interp2d(z_coarse, ny1, nx1)
+            z_coarse_rank0[:] = self.interp2d(z_coarse, nx1, ny1)
 
         coarse_scatter.scatter(z_coarse_rank0, z_coarse_natural, False, PETSc.Scatter.Mode.REVERSE)
         cda.naturalToGlobal(z_coarse_natural, self.vecs[-1])
