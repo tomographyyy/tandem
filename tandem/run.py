@@ -14,30 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from email import header
 import sys
 import os
 import numpy as np
 from mpi4py import MPI
 from tandem.ocean import Ocean
 from tandem.solidearth import SolidEarth
-from tandem.okada import Okada
 from mpi4py import MPI
 import xarray as xr
 from tandem.decompi import DecoratorMPI
 import cProfile
 import pandas
+import shutil
 
 decompi = DecoratorMPI()
 
 class Tandem(object):
     @decompi.finalize
-    def __init__(self, outpath="out", job_id="0000000", job_name="forward_C1S1B1GR030_TakagawaZSlip3_Manning0.000"):
+    def __init__(self, outpath="out2", job_id="0000000", job_name="forward_C1S1B1GR030_TakagawaZSlip3_Manning0.000"):
         print("outpath:", outpath)
         print("job_id:", job_id)
         print("job_name:", job_name, flush=True)
+        self.comm = MPI.COMM_WORLD
+        self.rank = self.comm.rank
         self.outpath = outpath
-        os.makedirs(self.outpath, exist_ok=True)
+        if self.rank==0:
+            if os.path.exists(self.outpath):
+                shutil.rmtree(self.outpath)
+            os.makedirs(self.outpath, exist_ok=True)
         self.job_id = job_id
         self.Nonlinear = "_NL" in job_name
         print("Nonlinear:", self.Nonlinear, flush=True)
@@ -46,8 +50,6 @@ class Tandem(object):
         self.CMP = "C1" in job_option
         self.SAL = "S1" in job_option
         self.BSQ = "B1" in job_option
-        self.comm = MPI.COMM_WORLD
-        self.rank = self.comm.rank
         self.resolution = 8 * 60 # arcsec
         Manning = float(manning_option[7:]) # Manning 0.025
 
@@ -67,7 +69,7 @@ class Tandem(object):
             filter_radius = 1#200e3 #500e3 #5e3
         else:
             filter_radius = 1#200e3 # 1  #500e3#1
-        self.ocean = Ocean(self.shape, extent=self.extent, damping_factor=0.1*1,
+        self.ocean = Ocean(self.shape, extent=self.extent, damping_factor=0.01,
                             CLV=self.CLV, has_Boussinesq=self.BSQ,
                             outpath=self.outpath, filter_radius=filter_radius, 
                             Manning=Manning, Nonlinear=self.Nonlinear)
@@ -155,7 +157,7 @@ class Tandem(object):
         j_src = self.NY // 2
         """
         #self.ocean.add(variable=self.ocean.h, i=i_src, j=j_src, amount=1e-6)
-        amplitude = 1.0 #1e-6
+        amplitude = 1#1e-6
         if self.job_name[:7] == "forward":
             if False:
                 self.ocean.add_raised_cosine(variable=self.ocean.h, 
@@ -183,7 +185,7 @@ class Tandem(object):
             step_interval = int(np.round(30 / self.dt))
             save_interval = int(np.round(3600 / self.dt)) 
         else:
-            step_max = 5000 #1200
+            step_max = 200 #1200
             step_interval = 1
             save_interval = 50 
             
@@ -223,7 +225,7 @@ class Tandem(object):
                 #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
             #values = self.ocean.h.get_values(ij_list)
             values = self.ocean.get_hMNUV(ij_list)
-            print("values: ", values.shape)
+            #print("values: ", values.shape)
             #print(f"ij_list:{ij_list}")
             #values = self.ocean.get_filtered_h(ij_list)
             self.ocean.station.record(step, values)
@@ -234,7 +236,7 @@ class Tandem(object):
                 #xds_record_N.N[idx_chunk] = self.ocean.get_local_array(self.ocean.N) # record the value
             if (step + 1) % save_interval==0:
                 idx_save = step // save_interval
-                output_small_area = True
+                output_small_area = False
                 if output_small_area: # output small area
                     lon0 = 360 - 132.25
                     lat0 = 52.5
@@ -310,17 +312,11 @@ def get_job_info():
     return (outpath, job_id, job_name)
 
 if __name__=="__main__":
-    outpath, job_id, job_name = get_job_info()
-    if outpath == "":
-        tandem = Tandem()
-    else:
-        print("outpath:", outpath)
-        print("job_id:", job_id)
-        print("job_name:", job_name, flush=True)
-        tandem = Tandem(outpath, job_id, job_name)
+    outpath="out"
+    tandem = Tandem()
     rank = MPI.COMM_WORLD.rank
     if rank==0:
-        os.mkdir(f"{outpath}/profile")
-    filename = f'{outpath}/profile/{job_id}-{job_name}-{rank:04}.prof'
+        os.makedirs(f"{outpath}/profile", exist_ok=True)
+    filename = f'{outpath}/profile/{rank:04}.prof'
     print(cProfile)
     cProfile.run('tandem.main()', filename=filename)
