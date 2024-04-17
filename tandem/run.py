@@ -31,10 +31,10 @@ decompi = DecoratorMPI()
 
 class Tandem(object):
     @decompi.finalize
-    def __init__(self, outpath="outC0S0B0", job_id="0000000", job_name="forward_C0S0B0GR480_TakagawaZSlip3_Manning0.000"):
-        print("outpath:", outpath)
-        print("job_id:", job_id)
-        print("job_name:", job_name, flush=True)
+    def __init__(self, outpath="outC1S1B0", job_id="0000000", job_name="forward_C1S1B0GR480_TakagawaZSlip3_Manning0.000"):
+        #print("outpath:", outpath)
+        #print("job_id:", job_id)
+        #print("job_name:", job_name, flush=True)
         self.comm = MPI.COMM_WORLD
         self.rank = self.comm.rank
         self.outpath = outpath
@@ -47,44 +47,54 @@ class Tandem(object):
             os.makedirs(self.outpath + "/hmax", exist_ok=True)
         self.job_id = job_id
         self.Nonlinear = "_NL" in job_name
-        print("Nonlinear:", self.Nonlinear, flush=True)
+        #print("Nonlinear:", self.Nonlinear, flush=True)
         self.job_name, job_option, source_option, manning_option = job_name.split("_")[:4]
-        print("manning_option:", manning_option, flush=True)
+        #print("manning_option:", manning_option, flush=True)
         self.CMP = "C1" in job_option
         self.SAL = "S1" in job_option
         self.BSQ = "B1" in job_option
         self.resolution = 8 * 60 # arcsec
         Manning = float(manning_option[7:]) # Manning 0.025
 
-        self.NX = 76 * 60 * 60 // self.resolution
-        self.NY = 68 * 60 * 60 // self.resolution 
+        taper_width = 20
+        westend, eastend, northend, southend = [164, 240, 64, -4] # [degree]
+        _dsh = 180 * 60 // 675 # [arcmin] minimum mesh size to apply shtns
+        nW = int(np.floor((westend  - taper_width * self.resolution / 3600) / (_dsh / 60)))
+        nE = int(np.ceil ((eastend  + taper_width * self.resolution / 3600) / (_dsh / 60)))
+        nN = int(np.ceil ((northend + taper_width * self.resolution / 3600) / (_dsh / 60)))
+        nS = int(np.floor((southend - taper_width * self.resolution / 3600) / (_dsh / 60)))
+        westend  = nW * (_dsh / 60)
+        eastend  = nE * (_dsh / 60)
+        northend = nN * (_dsh / 60)
+        southend = nS * (_dsh / 60)
+        self.extent = np.deg2rad([westend, eastend, northend, southend]) 
+        self.NX = (nE - nW) * _dsh * 60 // self.resolution
+        self.NY = (nN - nS) * _dsh * 60 // self.resolution
+
         self.shape = (self.NX, self.NY)
-        self.extent = np.deg2rad([180-16, 240, 64, 12-16]) ### [xmin, xmax, ymax, ymin]
+        if self.rank==0:
+            print(westend, eastend, northend, southend, self.NX, self.NY)
         if self.SAL:
             if self.resolution in [15,30,60,120,240,480]:
                 self.CLV = int(np.log2(480 // self.resolution)) + 1
             else:
-                raise ValueError("resolution must be one of 15, 30, 60, 120, 240 and 480.")
+                raise ValueError("resolution must be one of 15, 30, 60, 120, 240 and 480 arc seconds.")
         else:
             self.CLV = 0
         
-        if self.job_name == "forward":
-            filter_radius = 1#200e3 #500e3 #5e3
-        else:
-            filter_radius = 1#200e3 # 1  #500e3#1
         self.ocean = Ocean(self.shape, extent=self.extent, damping_factor=0.01,
                             CLV=self.CLV, has_Boussinesq=self.BSQ,
-                            outpath=self.outpath, filter_radius=filter_radius, 
+                            outpath=self.outpath,  
                             Manning=Manning, Nonlinear=self.Nonlinear)
         filename = "data/gebco2023_8min_median/GEBCO*.nc"
         self.ocean.load_bathymetry(filename, depth=False, lon="lon", lat="lat", z="elevation")
         
-        taper_width = 40 #// self.RSL * 4
+        
         self.ocean.setup(taper_width=taper_width, 
                                     station_csv="data/station.csv",
                                     compressible=self.CMP)
 
-        df = pandas.read_csv("data/fault_param_sample.csv", header=1)
+        df = pandas.read_csv("data/fault_param.csv", header=1)
         params={}
         params["lonR"]=list(360 + df["Lon."])
         params["latR"]=list(df["#Lat."])
@@ -103,29 +113,21 @@ class Tandem(object):
         dmax = self.ocean.get_max(self.ocean.d)
         lx = self.ocean.dx * self.ocean.R * np.min(np.cos(self.ocean.yN))
         ly = self.ocean.dy * self.ocean.R
-        lmin = lx * ly / (lx + ly) #np.sqrt(lx**2 + ly**2)
+        #lmin = lx * ly / (lx + ly) #np.sqrt(lx**2 + ly**2)
+        lmin = np.sqrt(lx**2 + ly**2)
         gmax = np.max(self.ocean.gN)
         self.dt = 0.99 * lmin / np.sqrt(gmax * dmax)
-        if self.resolution==480:
-            self.dt = np.minimum(self.dt, 15.0)
-        elif self.resolution==240:
-            self.dt = np.minimum(self.dt, 6.0)
-        elif self.resolution==120:
-            self.dt = np.minimum(self.dt, 3.0)
-        elif self.resolution==60:
-            self.dt = np.minimum(self.dt, 1.5)
-        elif self.resolution==30:
-            self.dt = np.minimum(self.dt, 0.75)
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-        print("dx   ", self.ocean.dx)
-        print("dy   ", self.ocean.dy)
-        print("R    ", self.ocean.R)
-        print("cos  ", np.min(np.cos(self.ocean.yN)))
-        print("lmin ", lmin)
-        print("dt   ", self.dt, "dtmax", lmin / np.sqrt(gmax * dmax))
-        print("CLV  ", self.CLV)
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$", flush=True)
+        
+        t_max = 3600 * 7 # [sec]
+        t_save_interval = 30 # [sec]
+        step_interval = int(np.ceil(t_save_interval / self.dt))
+        if step_interval==0:
+            raise ValueError("t_save_interval must be less than dt.")
+        self.dt = t_save_interval / step_interval
 
+        if self.rank==0:
+            print("dt   ", self.dt, "dtmax", lmin / np.sqrt(gmax * dmax))
+            
         if self.CLV > 0:
             sh_n = 675 # int(np.round(675 * 2**(5 - self.CLV)))
             earth = SolidEarth(self.ocean, GID=True, sh_n=sh_n, IGF=False)
@@ -145,20 +147,8 @@ class Tandem(object):
                 i_src = row.i
                 j_src = row.j
 
-        #print("%%%%%%%%%%%",self.comm.allgather(i_src))
-        #self.comm.Allgather([i_src,  MPI.INT], [i_src_g, MPI.INT])
-        #self.comm.Allgather([j_src,  MPI.INT], [j_src_g, MPI.INT])
         i_src = np.max(self.comm.allgather(i_src))
         j_src = np.max(self.comm.allgather(j_src))
-        #j_src = np.max(j_src_g)
-        print(index_src, i_src, j_src)
-        """
-        if self.job_name == "forward":
-            i_src = 240#360
-        else:
-            i_src = 720#600
-        j_src = self.NY // 2
-        """
         #self.ocean.add(variable=self.ocean.h, i=i_src, j=j_src, amount=1e-6)
         amplitude = 1#1e-6
         if self.job_name[:7] == "forward":
@@ -213,12 +203,6 @@ class Tandem(object):
         #xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
         #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
         for step in range(step_max):
-            #if self.rank==0:
-            #    print(step, end=" ", flush=True)
-            #hmax = self.ocean.get_max(self.ocean.h)
-            #hmin = self.ocean.get_min(self.ocean.h)
-            #if self.rank==0:
-            #    print(hmax)
             if step % save_interval==0:
                 save_steps = step + np.arange(0, save_interval, step_interval)
                 time_h = save_steps * self.dt
@@ -228,8 +212,6 @@ class Tandem(object):
                 #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
             #values = self.ocean.h.get_values(ij_list)
             values = self.ocean.get_hMNUV(ij_list)
-            #print("values: ", values.shape)
-            #print(f"ij_list:{ij_list}")
             #values = self.ocean.get_filtered_h(ij_list)
             self.ocean.station.record(step, step*self.dt, values)
             if step % step_interval==0:
@@ -254,7 +236,6 @@ class Tandem(object):
                     #xds_record_M.to_netcdf(self.outpath + f"/record_M_{self.rank:04}_{idx_save:03}.nc") # save the record
                     #xds_record_N.to_netcdf(self.outpath + f"/record_N_{self.rank:04}_{idx_save:03}.nc") # save the record
         
-            #print(xda_record_h[step])
             COR=True
             SPG=True
             SMF=True
@@ -270,36 +251,11 @@ class Tandem(object):
             if self.rank==0:
                 print(f"{step} {hmax:10.2f} {hmin:10.2f}")
             i,j=self.ocean.h.get_slice()
-            #if hmax>20 and np.max(self.ocean.h.vecArray[i[0],j[0]])==hmax:
-            #    print("++++++++++++++ hmax > 20 ++++++++++++++++++++++")
-            #    print(self.rank, hmax, np.argmax(self.ocean.h.vecArray[i[0],j[0]]) , i[0].start, i[0].stop, j[0].start, j[0].stop)
-            #    break
-            #if self.ocean.get_max(self.ocean.h)>1:
-            #    self.ocean.save_xr_dataset_in_parallel("overflow")
-            #    break
-        #self.ocean.save_xr_dataset_in_parallel("tandem_stag_1")
         xds_record_hmax = xr.Dataset({"hmax":self.ocean.get_xr_data_array_recorder(self.ocean.hmax, [0], attrs=attrs_d)})
         xds_record_hmax.hmax[0] = self.ocean.get_local_array(self.ocean.hmax)
         xds_record_hmax.to_netcdf(self.outpath + f"/hmax/hmax_{self.rank:04}.nc")         
 
         self.ocean.station.save_timeseries(self.outpath + f"/timeseries{self.rank:04}.mseed")
-        #print(index_src, i_src, j_src)
-        """
-        print("\n===== mid =====", flush=True)
-        step_max = 0  # do not run the adjoint process
-        if False:
-            self.ocean.setup_ksp(is_adjoint=True, with_Coriolis=True, with_sponge=True, with_Sommerfeld=True)
-            for step in range(step_max):
-                print(step, end=" ")
-                self.ocean.adjoint(+self.dt)
-        else:
-            for step in range(step_max):
-                print(step, end=" ")
-                self.ocean.forward(-self.dt)
-        if self.rank==0:
-            print("time for fwd & adj:", time.time() - time_start)
-        self.ocean.save_xr_dataset_in_parallel("tandem_stag_2")
-        """
 
 def get_job_info():
     print("args:", sys.argv)

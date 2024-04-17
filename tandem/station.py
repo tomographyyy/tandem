@@ -30,7 +30,6 @@ class Angle(object):
             dy = np.sin(x_arr) - np.sin(x)
             r = dx**2 + dy**2
             idx = np.argmin(r)
-            #print("idx", idx)
             return idx
         else:
             if self.__is_in(x, extent, mid):
@@ -65,7 +64,6 @@ class Angle(object):
         r0 = self.get_unit_vec(extent[0])
         r1 = self.get_unit_vec(extent[1])
         rm = self.get_unit_vec(mid)
-        # print(x, extent, mid, np.cross(r0, rm), flush=True)
         is_in0 = (np.cross(r0, rm) * np.cross(r0, rx)) >= 0
         is_in1 = (np.cross(r1, rm) * np.cross(r1, rx)) >= 0
         return is_in0 and is_in1
@@ -103,9 +101,7 @@ class Station(object):
                 self.dataframe.at[k, "j"] = j
             else:
                 drops.append(k)
-        #print("drops", drops)
         self.dataframe = self.dataframe.drop(self.dataframe.index[drops])
-        #print("len(df)", len(self.dataframe))
 
     def get_list_stats(self):
         stats_list = []
@@ -128,8 +124,6 @@ class Station(object):
     
     def save_csv(self, filename):
         if len(self.dataframe) > 0:
-            #print(self.dataframe.columns)
-            #self.dataframe.rename(columns={'Unnamed: 0': 'index'}, inplace=True)
             self.dataframe.to_csv(filename)
 
     def setup_logger(self, nstep, delta, starttime="2000-01-01T00:00:00.000000Z"):

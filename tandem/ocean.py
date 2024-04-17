@@ -77,7 +77,7 @@ class Ocean(object):
 
     def __init__(self, shape, extent=(0,1,1,0), 
                 CLV=0, damping_factor=0.1, hyperbolic_r=3, 
-                has_Boussinesq=False, outpath="", filter_radius=5e3, 
+                has_Boussinesq=False, outpath="", filter_radius=1, 
                 Manning=0., Nonlinear=False):
         self.comm = PETSc.COMM_WORLD
         self.rank = self.comm.rank
@@ -188,12 +188,6 @@ class Ocean(object):
         y_dst = self.yM[j0:j1]
         i_near = angle.get_nearest_indexes(x_dst, x_src, x_extent, x_mid)
         j_near = angle.get_nearest_indexes(y_dst, y_src, y_extent, y_mid)
-        #print("x_dst:", x_dst)
-        #print("x_src:", x_src)
-        #print("x_extent:", x_extent)
-        #print("x_mid:", x_mid)
-        #print("i:", i_near)
-        #print("j:", j_near, flush=True)
         elev_local = nc[z][j_near, i_near]
         if depth:
             elev_local = nc[z][j_near, i_near]
@@ -229,18 +223,14 @@ class Ocean(object):
             self.xN, self.yM,
             xextent, yextent, xmid, ymid, (i0, i1), (j0, j1))
         self.station.save_csv(f"{self.outpath}/station{self.rank:04}.csv")
-        #wx = wy = np.deg2rad(3.0)
-        #self.is_near_source = self.is_near_source(self.xN, self.yM, xextent, yextent, wx=wx, wy=wy)
 
     def setup_ksp(self, is_adjoint=False):
         self.ksp = PETSc.KSP().create(comm = self.comm)
         self.ksp.setDM(self.Phai.da)
         t0 = time.time()
         if is_adjoint:
-            #print("adjoint")
             self.ksp.setComputeOperators(self.set_Poisson_adj)
         else:
-            #print("forward")
             self.ksp.setComputeOperators(self.set_Poisson)
         self.ksp.setType('cg')
         self.ksp.getPC().setType('hypre') 
@@ -804,19 +794,10 @@ class Ocean(object):
                 self.M_pre.vecArray[0,j[0]] -= dM
                 self.M_pre.vecArray[1,j[0]] += dM
         if i[0].stop==iMax:
-            #print(i[0].stop, i[0], self.dx, Rcos, dt)
             d_c = self.d.vecArray[iMax-1,j[0]]
             M_c = self.M.vecArray[iMax-0,j[0]]
-            #dM = np.sqrt(g_c * d_c) / (Rcos * self.dx) \
-            #    * (d_c > 0) * dt * M_c
-            #self.M.vecArray[iMax,j[0]] -= dM
-            #self.M.vecArray[iMax-1,j[0]] += dM
             f = np.sqrt(g_c * d_c) / (Rcos * self.dx) * (d_c > 0) * dt
             delta_M = f * M_c
-            # The error happens when step > 438.
-            #self.M.vecArray[iMax,j[0]] -= f * M_c
-            #self.M.vecArray[iMax-1,j[0]] += f * M_c
-            # test case
             if reversed_sign:
                 self.M_pre.vecArray[iMax-1,j[0]] -= delta_M # reversed sign
                 self.M_pre.vecArray[iMax,j[0]] += delta_M # reversed sign
@@ -1585,7 +1566,6 @@ class Ocean(object):
         (i0, i1), (j0, j1) = self.d.da.getRanges()
         lons = np.rad2deg(self.xN[i0:i1])
         lats = np.rad2deg(self.yM[j0:j1])
-        #print("lonlat.shape: ", self.xN.shape, self.yM.shape, lons.shape, lats.shape, flush=True)
         self.okada = Okada(lons, lats)
         d_pad = self.d.vecArray[i0-1:i1+1,j0-1:j1+1].copy().T
         self.uz = self.okada.uz(lonR, latR, strike, depth, 
@@ -1600,11 +1580,7 @@ class Ocean(object):
         (i0, i1), (j0, j1) = variable.da.getRanges()
         x = self.R * (self.xN[i0:i1] - self.xN[i]) * np.cos(self.yM[j])
         y = self.R * (self.yM[j0:j1] - self.yM[j])
-        #print(self.rank, "x", self.xN[i], self.xN[i0:i1])
-        #print(self.rank, "y", self.yM[j], self.yM[j0:j1])
         xx, yy = np.meshgrid(y, x)
-        #xx, yy = np.meshgrid(x, y, indexing='ij')
-        #yy, xx = np.meshgrid(y, x)
         rr = np.sqrt(xx**2 + yy**2)
         variable.vecArray[i0:i1,j0:j1] += self.__raised_cosine(radius, rr) * amplitude
         variable.local_to_local()
@@ -1748,9 +1724,6 @@ class Ocean(object):
         rr = np.sqrt(xx**2 + yy**2)
         filt = self.__raised_cosine(radius, rr)
         filt /= np.sum(filt)
-        #print(f"dx:{dx}, dy:{dy}, nx:{nx}, ny:{ny}")
-        #print(f"filter.radius: {radius}")
-        #print(f"filter.shape: {filt.shape}" )
         return filt
     def __raised_cosine(self, r, x):
         a = np.abs(np.pi * x / r)
