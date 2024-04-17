@@ -151,9 +151,6 @@ class Station(object):
                     "V": self.logger[k,5,:],
                 }
                 np.savez(filename[:-8] + f"_station{stid:04}.npz", **data)
-                #traces.append(obspy.Trace(self.logger[k], headers[k]))
-            #stream = obspy.Stream(traces)
-            #stream.write(filename, format="MSEED")
 
 class RaisedCosineFilter(object):
     def __init__(self, lat0, r, dlon, dlat, R = 6378137):

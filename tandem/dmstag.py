@@ -199,14 +199,6 @@ class DMDAWrapper(object):
                 j0 = np.maximum(j0, 1)
                 j1 = np.minimum(j1, jMax-1)
         return (SliceEx(i0,i1), SliceEx(j0,j1))
-        """
-        result=[]
-        for a in [-1, 0, 1]:
-            result.append(slice(i0+a, i1+a))
-        for a in [-1, 0, 1]:
-            result.append(slice(j0+a, j1+a))
-        return result
-        """
     def get_values(self, ij_list):
         values = np.zeros(len(ij_list))
         for k, (i,j) in enumerate(ij_list):
@@ -304,8 +296,6 @@ class DMDAHierarchy(DMDAWrapper):
             yx = vla0[iMin0+1:iMax0+1:2,jMin0-1:jMax0-1:2] + vla0[iMin0-1:iMax0-1:2,jMin0+1:jMax0+1:2]
             vla1[iMin1:iMax1,jMin1:jMax1] += (xx + yy) / 8 + (xy + yx) / 16
             da1.localToGlobal(vl1, self.vecs[0])
-        # level n to n+1 (n>1)
-        # print(self.rank, flush=True)
         for i in range(1, self.nlevel): 
             if matmul:
                 self.mats[i].multTranspose(self.vecs[i-1], self.vecs[i]) # coarsen
@@ -381,13 +371,6 @@ class DMDAHierarchy(DMDAWrapper):
         coarse_scatter, z_coarse_rank0 = PETSc.Scatter.toZero(z_coarse_natural) 
         # print(self.rank, flush=True)
         if self.rank==0:
-            """
-            (NX,NY) = self.levels[-1].sizes
-            print("dmstag L357: ", cda, NX, NY, z_coarse.shape, z_coarse_rank0.getSize())
-            z_coarse_wide = np.zeros((NY, NX), dtype=np.float64)
-            z_coarse_wide[:z_coarse.shape[0],:z_coarse.shape[1]] = z_coarse
-            z_coarse_rank0[:] = z_coarse_wide
-            """
             nx1, ny1 = self.levels[-1].sizes
             z_coarse_rank0[:] = self.interp2d(z_coarse, nx1, ny1)
 

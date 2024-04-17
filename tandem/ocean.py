@@ -310,7 +310,6 @@ class Ocean(object):
         self.set_dMN()
         self.set_comp(compressible=compressible)
         self.set_taper(width=taper_width)
-        #self.setup_ksp()
         self.setup_station(station_csv, taper_width)
 
     def update_MN_by_h(self, dt=1):
@@ -406,7 +405,6 @@ class Ocean(object):
                                                  * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[ 1]] < Dmax)
                         - _MND.vecArray[i[0],j[ 0]]
                         ) * dt / self.dy / self.R 
-            #self.M.vecArray[i[0], j[0]] -= (adv0 + adv1) * (tapering_factor_M==1)
             self.M.vecArray[i[0], j[0]] -= (adv0 + adv1 + adv2 + adv3) * (tapering_factor_M==1)
             self.M.local_to_local()
 
@@ -496,7 +494,6 @@ class Ocean(object):
                         - _NMD.vecArray[i[ 0],j[0]]
                         ) * dt / self.dx / (self.R * np.cos(self.yN[j[0]])) 
                     
-            #self.N.vecArray[i[0], j[0]] -= (adv0 + adv1) * (tapering_factor_N==1)
             self.N.vecArray[i[0], j[0]] -= (adv0 + adv1 + adv2 + adv3) * (tapering_factor_N==1)
             self.N.local_to_local()
 
@@ -534,16 +531,16 @@ class Ocean(object):
         else:
             i, j = self.M.get_slice()
             N_nw = self.N.vecArray[i[-1], j[0]]
-            N_ne = self.N.vecArray[i[0], j[0]]
+            N_ne = self.N.vecArray[i[ 0], j[0]]
             N_sw = self.N.vecArray[i[-1], j[1]]
-            N_se = self.N.vecArray[i[0], j[1]]
+            N_se = self.N.vecArray[i[ 0], j[1]]
             NM = ((N_nw + N_se) + (N_ne + N_sw)) / 4 # N value at M location
 
             i, j = self.N.get_slice()
             M_nw = self.M.vecArray[i[0], j[-1]]
             M_ne = self.M.vecArray[i[1], j[-1]]
-            M_sw = self.M.vecArray[i[0], j[0]]
-            M_se = self.M.vecArray[i[1], j[0]]
+            M_sw = self.M.vecArray[i[0], j[ 0]]
+            M_se = self.M.vecArray[i[1], j[ 0]]
             MN = ((M_nw + M_se) + (M_ne + M_sw)) / 4 # M value at N location
             # update M
             i, j = self.M.get_slice()
@@ -585,35 +582,8 @@ class Ocean(object):
             
 
     def update_MN_by_h_adj(self, dt):
-        """i, j = self.h.get_slice()
-        gdMe = self.gM[j[0]] * self.dM.vecArray[i[1],j[0]] * self.M.vecArray[i[1],j[0]]
-        gdMw = self.gM[j[0]] * self.dM.vecArray[i[0],j[0]] * self.M.vecArray[i[0],j[0]]
-        Rdx = self.R * np.cos(self.yM[j[0]]) * self.dx 
-        self.h.vecArray[i[0],j[0]] += dt * (gdMe - gdMw) / Rdx
-        gdNs = self.gN[j[1]] * self.dN.vecArray[i[0],j[1]] * self.N.vecArray[i[0],j[1]]
-        gdNn = self.gN[j[0]] * self.dN.vecArray[i[0],j[0]] * self.N.vecArray[i[0],j[0]]
-        Rdy = self.R * self.dy
-        self.h.vecArray[i[0],j[0]] += dt * (gdNs - gdNn) / Rdy
-        self.h.local_to_local()"""
-        """# M
-        i, j = self.M.get_slice()
-        Rdx = self.R * self.dx * np.cos(self.yM[j[0]])
-        delta_h = dt * self.gM[j[0]] * self.dM.vecArray[i[0], j[0]] / Rdx * self.M.vecArray[i[0], j[0]]
-        self.h.vecArray[i[0], j[0]] -= delta_h
-        self.h.vecArray[i[-1], j[0]] += delta_h  
-        # N
-        i, j = self.N.get_slice()
-        Rdy = self.R * self.dy
-        delta_h = dt * self.gN[j[0]] * self.dN.vecArray[i[0], j[0]] / Rdy * self.N.vecArray[i[0], j[0]]
-        self.h.vecArray[i[0], j[0]] -= delta_h
-        self.h.vecArray[i[0], j[-1]] += delta_h 
-        self.h.local_to_local()"""
         i, j = self.h.get_slice()
         iMax, jMax = self.h.da.getSizes()
-        #if i.start==0:
-        #    self.M.vecArray[0,:]=0
-        #if i.stop==iMax:
-        #    self.M.vecArray[iMax,:]=0
         gdMe = self.gM[j[0]] * self.dM.vecArray[i[1],j[0]] * self.M.vecArray[i[1],j[0]]
         gdMw = self.gM[j[0]] * self.dM.vecArray[i[0],j[0]] * self.M.vecArray[i[0],j[0]]
         if i.start==0:
@@ -640,13 +610,13 @@ class Ocean(object):
         taperJ = self.taper_yh[j[0]].reshape(1,-1)
         tapering_factor_M = taperI.dot(taperJ)
         N_nw = self.N.vecArray[i[-1], j[0]]
-        N_ne = self.N.vecArray[i[0], j[0]]
+        N_ne = self.N.vecArray[i[ 0], j[0]]
         N_sw = self.N.vecArray[i[-1], j[1]]
-        N_se = self.N.vecArray[i[0], j[1]]
+        N_se = self.N.vecArray[i[ 0], j[1]]
         N_pre_nw = self.N_pre.vecArray[i[-1], j[0]]
-        N_pre_ne = self.N_pre.vecArray[i[0], j[0]]
+        N_pre_ne = self.N_pre.vecArray[i[ 0], j[0]]
         N_pre_sw = self.N_pre.vecArray[i[-1], j[1]]
-        N_pre_se = self.N_pre.vecArray[i[0], j[1]]
+        N_pre_se = self.N_pre.vecArray[i[ 0], j[1]]
         N_c = (((N_nw + N_se) + (N_ne + N_sw)) \
              + ((N_pre_nw + N_pre_se) + (N_pre_ne + N_pre_sw))) / 8.0
         dMc = 2.0 * omega * np.sin(self.yM[j[0]]) * N_c \
@@ -660,12 +630,12 @@ class Ocean(object):
         tapering_factor_N = taperI.dot(taperJ)
         M_nw = self.M.vecArray[i[0], j[-1]]
         M_ne = self.M.vecArray[i[1], j[-1]]
-        M_sw = self.M.vecArray[i[0], j[0]]
-        M_se = self.M.vecArray[i[1], j[0]]
+        M_sw = self.M.vecArray[i[0], j[ 0]]
+        M_se = self.M.vecArray[i[1], j[ 0]]
         M_pre_nw = self.M_pre.vecArray[i[0], j[-1]]
         M_pre_ne = self.M_pre.vecArray[i[1], j[-1]]
-        M_pre_sw = self.M_pre.vecArray[i[0], j[0]]
-        M_pre_se = self.M_pre.vecArray[i[1], j[0]]
+        M_pre_sw = self.M_pre.vecArray[i[0], j[ 0]]
+        M_pre_se = self.M_pre.vecArray[i[1], j[ 0]]
         M_c = (((M_nw + M_se) + (M_ne + M_sw)) + \
             ((M_pre_nw + M_pre_se) + (M_pre_ne + M_pre_sw))) / 8.0
         dNc = 2.0 * omega * np.sin(self.yN[j[0]]) * M_c \
@@ -689,13 +659,13 @@ class Ocean(object):
         taperI = self.taper_xM[i[0]].reshape(-1,1)
         taperJ = self.taper_yh[j[0]].reshape(1,-1)
         tapering_factor_M = taperI.dot(taperJ)
-        v__ = self.M.vecArray[i[0], j[0]] * (self.dM.vecArray[i[0],j[0]]>0) * np.sin(self.yM[j[0]])
+        v__ = self.M.vecArray[i[0], j[ 0]] * (self.dM.vecArray[i[0],j[ 0]]>0) * np.sin(self.yM[j[ 0]])
         vpm = self.M.vecArray[i[1], j[-1]] * (self.dM.vecArray[i[1],j[-1]]>0) * np.sin(self.yM[j[-1]])
-        vp_ = self.M.vecArray[i[1], j[0]] * (self.dM.vecArray[i[1],j[0]]>0) * np.sin(self.yM[j[0]])
+        vp_ = self.M.vecArray[i[1], j[ 0]] * (self.dM.vecArray[i[1],j[ 0]]>0) * np.sin(self.yM[j[ 0]])
         v_m = self.M.vecArray[i[0], j[-1]] * (self.dM.vecArray[i[0],j[-1]]>0) * np.sin(self.yM[j[-1]])
-        v__ *= self.taper_xM[i[0]].reshape(-1,1) @ self.taper_yh[j[0]].reshape(1,-1)
+        v__ *= self.taper_xM[i[0]].reshape(-1,1) @ self.taper_yh[j[ 0]].reshape(1,-1)
         vpm *= self.taper_xM[i[1]].reshape(-1,1) @ self.taper_yh[j[-1]].reshape(1,-1)
-        vp_ *= self.taper_xM[i[1]].reshape(-1,1) @ self.taper_yh[j[0]].reshape(1,-1)
+        vp_ *= self.taper_xM[i[1]].reshape(-1,1) @ self.taper_yh[j[ 0]].reshape(1,-1)
         v_m *= self.taper_xM[i[0]].reshape(-1,1) @ self.taper_yh[j[-1]].reshape(1,-1)
         dNc = 2 * omega / 8 * ((v__ + vpm) + (vp_ + v_m)) * dt
         
@@ -704,14 +674,14 @@ class Ocean(object):
         taperI = self.taper_xh[i[0]].reshape(-1,1)
         taperJ = self.taper_yN[j[0]].reshape(1,-1)
         tapering_factor_N = taperI.dot(taperJ)
-        v_p = self.N.vecArray[i[0],j[1]] * (self.dN.vecArray[i[0],j[1]]>0) * np.sin(self.yN[j[1]])#(self.yN[j[1]])
+        v_p = self.N.vecArray[i[ 0],j[1]] * (self.dN.vecArray[i[ 0],j[1]]>0) * np.sin(self.yN[j[1]])
         vm_ = self.N.vecArray[i[-1],j[0]] * (self.dN.vecArray[i[-1],j[0]]>0) * np.sin(self.yN[j[0]])
-        vmp = self.N.vecArray[i[-1],j[1]] * (self.dN.vecArray[i[-1],j[1]]>0) * np.sin(self.yN[j[1]])#(self.yN[j[1]])
-        v__ = self.N.vecArray[i[0],j[0]] * (self.dN.vecArray[i[0],j[0]]>0) * np.sin(self.yN[j[0]])
-        v_p *= self.taper_xh[i[0]].reshape(-1,1) @ self.taper_yN[j[1]].reshape(1,-1)
+        vmp = self.N.vecArray[i[-1],j[1]] * (self.dN.vecArray[i[-1],j[1]]>0) * np.sin(self.yN[j[1]])
+        v__ = self.N.vecArray[i[ 0],j[0]] * (self.dN.vecArray[i[ 0],j[0]]>0) * np.sin(self.yN[j[0]])
+        v_p *= self.taper_xh[i[ 0]].reshape(-1,1) @ self.taper_yN[j[1]].reshape(1,-1)
         vm_ *= self.taper_xh[i[-1]].reshape(-1,1) @ self.taper_yN[j[0]].reshape(1,-1)
         vmp *= self.taper_xh[i[-1]].reshape(-1,1) @ self.taper_yN[j[1]].reshape(1,-1)
-        v__ *= self.taper_xh[i[0]].reshape(-1,1) @ self.taper_yN[j[0]].reshape(1,-1)
+        v__ *= self.taper_xh[i[ 0]].reshape(-1,1) @ self.taper_yN[j[0]].reshape(1,-1)
         dMc = 2 * omega / 8 * ((v_p + vm_) + (vmp + v__)) * dt
 
         i, j = self.N.get_slice()
@@ -747,9 +717,7 @@ class Ocean(object):
             M_w = self.M_pre.vecArray[iMax-1,j[0]]
             f = np.sqrt(g_c * d_c) / (Rcos * self.dx) * (d_c > 0) * dt
             dM = M_w - M_e
-            #self.M.vecArray[iMax,j[0]] += np.sqrt(g_c * d_c) \
-            #    / (Rcos * self.dx) * (d_c > 0) * dt * dM
-            self.M.vecArray[iMax,j[0]] += f * dM # (M_w - M_e)
+            self.M.vecArray[iMax,j[0]] += f * dM
         self.M.local_to_local()
         # update N
         if j[0].start==0:
@@ -800,7 +768,7 @@ class Ocean(object):
             delta_M = f * M_c
             if reversed_sign:
                 self.M_pre.vecArray[iMax-1,j[0]] -= delta_M # reversed sign
-                self.M_pre.vecArray[iMax,j[0]] += delta_M # reversed sign
+                self.M_pre.vecArray[iMax  ,j[0]] += delta_M # reversed sign
             else:
                 self.M_pre.vecArray[iMax-1,j[0]] += delta_M
                 self.M_pre.vecArray[iMax-0,j[0]] -= delta_M
@@ -829,10 +797,10 @@ class Ocean(object):
             dN = np.sqrt(g_c * d_c) / (Rcos * self.dy) \
                 * (d_c > 0) * dt * N_c
             if reversed_sign:
-                self.N_pre.vecArray[i[0],jMax] += dN * np.cos(self.yN[jMax]) # reversed sign
+                self.N_pre.vecArray[i[0],jMax  ] += dN * np.cos(self.yN[jMax  ]) # reversed sign
                 self.N_pre.vecArray[i[0],jMax-1] -= dN * np.cos(self.yN[jMax-1]) # reversed sign
             else:
-                self.N_pre.vecArray[i[0],jMax] -= dN * np.cos(self.yN[jMax])
+                self.N_pre.vecArray[i[0],jMax  ] -= dN * np.cos(self.yN[jMax  ])
                 self.N_pre.vecArray[i[0],jMax-1] += dN * np.cos(self.yN[jMax-1])
         self.N.local_to_local()
 
@@ -850,9 +818,6 @@ class Ocean(object):
         tapering_factor_M = cd * (np.cosh(r * (1 - taperI.dot(taperJ))) - 1)
         
         M_c = self.M.vecArray[i[0], j[0]]
-        #d_w = self.d.vecArray[i[-1], j[0]]
-        #d_e = self.d.vecArray[i[0], j[0]]
-        #d_c = np.maximum((d_w + d_e) / 2, 10)
         d_c = np.maximum(self.dM.vecArray[i[0], j[0]], 10)
         g_c = self.gM[j[0]]
         dMc = tapering_factor_M * np.sqrt(g_c / d_c) \
@@ -867,9 +832,6 @@ class Ocean(object):
         tapering_factor_N = cd * (np.cosh(r * (1 - taperI.dot(taperJ))) - 1)
 
         N_c = self.N.vecArray[i[0], j[0]]
-        #d_n = self.d.vecArray[i[0], j[-1]]
-        #d_s = self.d.vecArray[i[0], j[0]]
-        #d_c = np.maximum((d_n + d_s) / 2, 10)
         d_c = np.maximum(self.dN.vecArray[i[0], j[0]], 10)
         g_c = self.gN[j[0]]
         dNc = tapering_factor_N * np.sqrt(g_c / d_c) \
@@ -958,7 +920,6 @@ class Ocean(object):
 
     def update_Phai_by_b(self):
         self.b.local_to_global()
-        #self.setup_ksp(is_adjoint=False)
         self.ksp.solve(self.b.globalVec, self.Phai.globalVec)
         self.Phai.global_to_local()
         i, j = self.b.get_slice()
@@ -966,7 +927,6 @@ class Ocean(object):
         self.b.local_to_local()
     def update_Phai_by_b_adj(self):
         self.Phai.local_to_global()
-        #self.setup_ksp(is_adjoint=True)
         self.ksp.solve(self.Phai.globalVec, self.b0.globalVec)
         self.b0.global_to_local()
         i, j = self.b0.get_slice()
@@ -1077,22 +1037,6 @@ class Ocean(object):
         self.N.local_to_local()
 
     def update_AMBN_by_MN_adj(self, dt):
-        """i, j = self.h.get_slice()
-        d_c = self.d.vecArray[i[0], j[0]]
-        cos_s = np.cos(self.yN[j[1]])
-        cos_n = np.cos(self.yN[j[0]])
-        cos_c = np.cos(self.yM[j[0]])
-        Rdx = self.R * self.dx * np.cos(self.yM[j[0]])
-        inv_Rdx = 1.0 / Rdx
-        inv_Rdy_s = (cos_s / cos_c) / (self.R * self.dy)
-        inv_Rdy_n = (cos_n / cos_c) / (self.R * self.dy)
-        AMBN_c = self.AMBN.vecArray[i[0], j[0]]
-        self.M.vecArray[i[0], j[0]] += (d_c > 0) * inv_Rdx * AMBN_c
-        self.M.vecArray[i[1], j[0]] -= (d_c > 0) * inv_Rdx * AMBN_c
-        self.N.vecArray[i[0], j[0]] += (d_c > 0) * inv_Rdy_n * AMBN_c
-        self.N.vecArray[i[0], j[1]] -= (d_c > 0) * inv_Rdy_s * AMBN_c
-        self.M.local_to_local()
-        self.N.local_to_local()"""
         # M
         i, j = self.M.get_slice(edge=True)
         iMax, jMax = self.M.da.getSizes()
@@ -1128,9 +1072,6 @@ class Ocean(object):
     def update_h_by_AMBN(self, dt, is_intermediate=False):
         i, j = self.h.get_slice()
         ij = (i[0], j[0])
-        #taperI = self.taper_xh[i[0]].reshape(-1,1)
-        #taperJ = self.taper_yh[j[0]].reshape(1,-1)
-        #tapering_factor = taperI.dot(taperJ)
         d_c = self.d.vecArray[ij]
         z_c = self.z.vecArray[ij]
         h_pre_c = self.h_pre.vecArray[ij]
@@ -1139,18 +1080,15 @@ class Ocean(object):
         comp_c = self.comp.vecArray[ij]
         if is_intermediate:
             self.h_star.vecArray[ij] = (d_c > 0) \
-                * (h_pre_c - z_pre_c       + AMBN_c * dt * comp_c) #* tapering_factor
+                * (h_pre_c - z_pre_c       + AMBN_c * dt * comp_c)
             self.h_star.local_to_local()
         else: 
             self.h.vecArray[ij] = (d_c > 0) \
-                * (h_pre_c - z_pre_c + z_c + AMBN_c * dt * comp_c) #* tapering_factor
+                * (h_pre_c - z_pre_c + z_c + AMBN_c * dt * comp_c)
             self.h.local_to_local()
     def update_h_by_AMBN_adj(self, dt, is_intermediate=False):
         i, j = self.h.get_slice()
         ij = (i[0], j[0])
-        #taperI = self.taper_xh[i[0]].reshape(-1,1)
-        #taperJ = self.taper_yh[j[0]].reshape(1,-1)
-        #tapering_factor = taperI.dot(taperJ)
         d_c = self.d.vecArray[ij]
         if is_intermediate:
             h_c = self.h_star.vecArray[ij] * (d_c > 0)
@@ -1158,9 +1096,9 @@ class Ocean(object):
             h_c = self.h.vecArray[ij] * (d_c > 0)
         comp_c = self.comp.vecArray[ij]
         
-        self.h_pre.vecArray[ij] += h_c #* tapering_factor
-        self.z_pre.vecArray[ij] -= h_c #* tapering_factor
-        self.AMBN.vecArray[ij] += dt * comp_c * h_c #* tapering_factor
+        self.h_pre.vecArray[ij] += h_c
+        self.z_pre.vecArray[ij] -= h_c
+        self.AMBN.vecArray[ij] += dt * comp_c * h_c
         self.h_pre.local_to_local()
         self.z_pre.local_to_local()
         self.AMBN.local_to_local()
@@ -1168,7 +1106,7 @@ class Ocean(object):
             self.h_star.vecArray[ij] = 0
             self.h_star.local_to_local()
         else: 
-            self.z.vecArray[ij] += h_c #* tapering_factor
+            self.z.vecArray[ij] += h_c
             self.z.local_to_local()
             self.h.vecArray[ij] = 0
             self.h.local_to_local()
@@ -1178,16 +1116,10 @@ class Ocean(object):
         h_star_coarse = self.dmHierarchy.get_coarse(self.h_star)
         if self.rank==0:
             z_coarse = self.solid_earth.get_z_coarse_by_SAL(h_star_coarse, self.CLV)
-            #z_coarse = h_star_coarse * 0.01######## only for debug ##############
         else: 
             z_coarse = None
         self.dmHierarchy.to_fine(z_coarse, self.z)
-        ##### only for debug #####
-        #i, j = self.h.get_slice()
-        #ij = (i[0], j[0])
-        #self.z.vecArray[ij] = 0.01 * self.h_star.vecArray[ij]
         self.z.local_to_local()
-        ##########################
         self.update_h_by_AMBN(dt, is_intermediate=False)
     def update_h_by_AMBN_with_SAL_adj(self, dt):            
         self.update_h_by_AMBN_adj(dt, is_intermediate=False)
@@ -1196,7 +1128,6 @@ class Ocean(object):
             z_coarse = self.z_coarse_pre + delta_z_coarse
             self.z_coarse_pre[:] = z_coarse
             delta_h_star_coarse = self.solid_earth.get_z_coarse_by_SAL(z_coarse, self.CLV)
-            #delta_h_star_coarse = z_coarse * 0.01######## only for debug ##############
             h_star_coarse = self.h_star_coarse_pre + delta_h_star_coarse
             self.z_coarse_pre[:] = 0
         else: 
@@ -1208,15 +1139,6 @@ class Ocean(object):
         self.dmHierarchy.to_fine(h_star_coarse, self.z)
         self.h_star.vecArray[ij] += self.z.vecArray[ij]
         self.h_star.local_to_local()
-        ##### only for debug #####
-        #i, j = self.h.get_slice()
-        #ij = (i[0], j[0])
-        #self.h_star.vecArray[ij] += 0.01 * self.z.vecArray[ij]
-        #self.z.vecArray[ij]=0
-        #self.h_star.local_to_local()
-        #self.z.local_to_local()
-        ##########################
-        #self.h_star.local_to_local()
         if self.rank==0:
             self.h_star_coarse_pre[:] = 0
         self.update_h_by_AMBN_adj(dt, is_intermediate=True)
@@ -1267,11 +1189,6 @@ class Ocean(object):
         col = PETSc.Mat.Stencil()
         (i0, i1), (j0, j1) = da.getRanges()
         (iMax, jMax) = da.getSizes()
-        #rows, cols, vals = [],[],[]
-        #Istart, Iend = Mat.getOwnershipRange()
-        #ranges = da.getOwnershipRanges()
-        #rankI = self.rank % ranges[0].size
-        #rankJ = self.rank // ranges[0].size
         i, j = self.d.get_slice()
 
         d_c = self.d.vecArray[i[0],j[0]]
@@ -1297,10 +1214,6 @@ class Ocean(object):
         K_e = d_c * dce / (3 * (self.R * cos_c * self.dx)**2)
         K_n = d_c * dcn / (3 * (self.R * self.dy)**2) * cos_cn / cos_c
         K_s = d_c * dcs / (3 * (self.R * self.dy)**2) * cos_cs / cos_c
-        #K_w = d_c **2 / (3 * (self.R * cos_c * self.dx)**2)
-        #K_e = d_c **2 / (3 * (self.R * cos_c * self.dx)**2)
-        #K_n = d_c **2 / (3 * (self.R * self.dy)**2) * cos_cn / cos_c
-        #K_s = d_c **2 / (3 * (self.R * self.dy)**2) * cos_cs / cos_c
         for j in range(j0, j1):
             for i in range(i0, i1):
                 row.index = (i, j)
@@ -1339,8 +1252,6 @@ class Ocean(object):
         return 0
     def setup_Poisson_Mat(self):
         da = self.Phai.da
-        #row = PETSc.Mat.Stencil()
-        #col = PETSc.Mat.Stencil()
         (i0, i1), (j0, j1) = da.getRanges()
         (iMax, jMax) = da.getSizes()
         self.Mat = PETSc.Mat()
@@ -1348,16 +1259,7 @@ class Ocean(object):
         self.Mat.setSizes([iMax * jMax, iMax * jMax])
         self.Mat.setType("aij")
         self.Mat.setPreallocationNNZ(5)
-        #da = self.Phai.da
-        #row = PETSc.Mat.Stencil()
-        #col = PETSc.Mat.Stencil()
-        #(i0, i1), (j0, j1) = da.getRanges()
-        #(iMax, jMax) = da.getSizes()
-        #rows, cols, vals = [],[],[]
         Istart, Iend = self.Mat.getOwnershipRange()
-        #ranges = da.getOwnershipRanges()
-        #rankI = self.rank % ranges[0].size
-        #rankJ = self.rank // ranges[0].size
         i, j = self.d.get_slice()
 
         d_c = self.d.vecArray[i[0],j[0]]
@@ -1385,7 +1287,6 @@ class Ocean(object):
         K_s = d_c * dcs / (3 * (self.R * self.dy)**2) * cos_cs / cos_c
         for j in range(j0, j1):
             for i in range(i0, i1):
-                #row.index = (i, j)
                 row = i + iMax * j
                 Kw = K_w[i-i0, j-j0] 
                 Ke = K_e[i-i0, j-j0] 
@@ -1393,15 +1294,11 @@ class Ocean(object):
                 Ks = K_s[i-i0, j-j0] 
                 # j-1
                 if j > 0 and self.d.vecArray[i,j-1] > 0:
-                    #col.index = (i, j-1)
                     col = i + iMax * (j - 1)
-                    #Mat.setValueStencil(row, col, Kn)
                     self.Mat[row, col] = Kn
                 # i-1
                 if i > 0 and self.d.vecArray[i-1,j]>0:
-                    #col.index = (i-1, j)
                     col = i - 1 + iMax * j
-                    #Mat.setValueStencil(row, col, Kw)
                     self.Mat[row, col] = Kw
                 # center
                 val = -1 #- ((KTw + KTe) + (KTn + KTs))
@@ -1412,23 +1309,16 @@ class Ocean(object):
                     if i>0      and self.d.vecArray[i-1,j]>0: val -= Kw
                     if i<iMax-1 and self.d.vecArray[i+1,j]>0: val -= Ke
                     if j<jMax-1 and self.d.vecArray[i,j+1]>0: val -= Ks
-                #col.index = (i, j)
                 col = i + iMax * j
-                #Mat.setValueStencil(row, col, val)
                 self.Mat[row, col] = val
                 # i+1
                 if i < iMax-1 and self.d.vecArray[i+1,j] > 0:
-                    #col.index = (i+1, j)
                     col = i + 1 * iMax * j
-                    #Mat.setValueStencil(row, col, Ke)
                     self.Mat[row, col] = Ke
                 # j+1
                 if j < jMax-1 and self.d.vecArray[i,j+1] > 0:
-                    #col.index = (i, j+1)
                     col = i + iMax * (j + 1)
-                    #Mat.setValueStencil(row, col, Ks)    
                     self.Mat[row, col] = Ks    
-        #Mat.assemble()
         self.Mat.assemblyBegin()
         self.Mat.assemblyEnd()
         return 0
@@ -1438,11 +1328,7 @@ class Ocean(object):
         col = PETSc.Mat.Stencil()
         (i0, i1), (j0, j1) = da.getRanges()
         (iMax, jMax) = da.getSizes()
-        #rows, cols, vals = [],[],[]
-        #Istart, Iend = Mat.getOwnershipRange()
         ranges = da.getOwnershipRanges()
-        #rankI = self.rank % ranges[0].size
-        #rankJ = self.rank // ranges[0].size
         i, j = self.d.get_slice()
 
         d_c = self.d.vecArray[i[0],j[0]]
@@ -1698,11 +1584,8 @@ class Ocean(object):
             n = filt.shape[1] // 2
             array = self.h_stencil.vecArray[i-m:i+m+1,j-n:j+n+1]
             values.append(np.sum(array * filt))
-            #array[:] = signal.convolve2d(array, filt, mode="same")
-            #values.append(array[m,n])
         return values
     def get_hMNUV(self, ij_list):
-        #self.h_stencil.copy_from(self.h)
         _dh = self.d.get_values(ij_list)
         _dM = self.dM.get_values(ij_list)
         _dN = self.dN.get_values(ij_list)

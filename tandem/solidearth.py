@@ -72,18 +72,12 @@ class SolidEarth:
             spatGreen = np.dot(np.diag(uG_New), np.ones(self.sh.spat_shape)) 
             # set spectral coefficients
             self.specGreen_lm = self.sh.analys(spatGreen)
-            #self.spatGreenNew = self.sh.synth(self.specGreen_lm) 
             tstart = time.time()
-            #m=0成分のコピー
-            if False:
-                for i in range(self.specGreen_lm.size):    # this is a major bottleneck (~50sec)
-                    if (self.sh.m[i] > 0):
-                        self.specGreen_lm[i]=self.specGreen_lm[self.sh.l[i]]
-            else:
-                self.specGreen_lm[self.sh.m > 0] = \
-                    [self.specGreen_lm[self.sh.l[i]] \
-                        for i in range(self.specGreen_lm.size) \
-                            if (self.sh.m[i] > 0)]
+            # copy of components of m=0
+            self.specGreen_lm[self.sh.m > 0] = \
+                [self.specGreen_lm[self.sh.l[i]] \
+                    for i in range(self.specGreen_lm.size) \
+                        if (self.sh.m[i] > 0)]
             print (f"time to initialize specGreen_lm: {time.time() - tstart} sec", flush=True)
             if np.max(self.ocean.xM) < np.pi:
                 xM = np.linspace(-1.0 * np.pi,  1.0 * np.pi, self.sh.nphi + 1, endpoint = True)  # data is alined from West  to East  [rad]
@@ -128,8 +122,7 @@ class SolidEarth:
                 * np.sqrt(4.0 * np.pi / (2.0 * self.sh.l + 1.0))
         spatNew = self.sh.synth(specNew)
         z_coarse = self.to_local(spatNew)
-        # np.savez("sal_new", spatLoad=spatLoad, specLoad=specLoad, specNew=specNew, spatNew=spatNew, z_coarse=z_coarse, shl = self.sh.l)
-
+        
         return z_coarse
 
     def to_local(self, spatNew):
