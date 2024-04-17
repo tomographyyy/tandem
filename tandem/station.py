@@ -133,13 +133,14 @@ class Station(object):
             self.dataframe.to_csv(filename)
 
     def setup_logger(self, nstep, delta, starttime="2000-01-01T00:00:00.000000Z"):
-        self.logger = np.zeros((len(self.dataframe), 5, nstep))
+        self.logger = np.zeros((len(self.dataframe), 6, nstep)) # [t, h, M, N, U, V]
         self.delta = delta
         self.starttime = starttime
 
-    def record(self, step, values):
+    def record(self, step, time, values):
         if values.shape[0]>0:
-            self.logger[:, :, step] = values # (nstation, nvalues, nstep)
+            self.logger[:, 0 , step] = time
+            self.logger[:, 1:, step] = values # (nstation, nvalues, nstep)
     
     def save_timeseries(self, filename):
         if len(self.dataframe) > 0:
@@ -148,11 +149,12 @@ class Station(object):
             for k in range(len(self.dataframe)):
                 stid = int(headers[k]["station"])
                 data = {
-                    "h": self.logger[k,0,:],
-                    "M": self.logger[k,1,:],
-                    "N": self.logger[k,2,:],
-                    "U": self.logger[k,3,:],
-                    "V": self.logger[k,4,:],
+                    "t": self.logger[k,0,:],
+                    "h": self.logger[k,1,:],
+                    "M": self.logger[k,2,:],
+                    "N": self.logger[k,3,:],
+                    "U": self.logger[k,4,:],
+                    "V": self.logger[k,5,:],
                 }
                 np.savez(filename[:-8] + f"_station{stid:04}.npz", **data)
                 #traces.append(obspy.Trace(self.logger[k], headers[k]))
