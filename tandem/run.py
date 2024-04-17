@@ -31,7 +31,7 @@ decompi = DecoratorMPI()
 
 class Tandem(object):
     @decompi.finalize
-    def __init__(self, outpath="outC1S1B1", job_id="0000000", job_name="forward_C1S1B1GR480_TakagawaZSlip3_Manning0.000"):
+    def __init__(self, outpath="outC0S0B0", job_id="0000000", job_name="forward_C0S0B0GR480_TakagawaZSlip3_Manning0.000"):
         print("outpath:", outpath)
         print("job_id:", job_id)
         print("job_name:", job_name, flush=True)
