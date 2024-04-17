@@ -347,17 +347,50 @@ class DMDAHierarchy(DMDAWrapper):
             h_coarse = None
         return h_coarse
     
+    def interp2d(self, z0, nx1, ny1):
+        ny0, nx0 = z0.shape
+        if ny1==ny0:
+                z_ = z0
+        else:
+            w = np.linspace(0,1,ny1).reshape(-1,1)
+            if ny1==ny0-1:
+                z_ = (1-w) * z0[:-1,:] + w * z0[1:,:]
+            elif ny1==ny0+1:
+                z_ = np.zeros((ny1, nx0))
+                z_[:-1,:] += (1-w[:-1]) * z0
+                z_[1: ,:] += w[1:]      * z0
+            else:
+                raise ValueError(f"Error: |ny1-ny0|>1: ny1={ny1}, ny0={ny0}")
+        if nx1==nx0:
+            z1 = z_
+        else:
+            w = np.linspace(0,1,nx1).reshape(1,-1)
+            if nx1==nx0-1:
+                z1 = (1-w) * z_[:,:-1] + w * z_[:,1:]
+            elif nx1==nx0+1:
+                z1 = np.zeros((ny1, nx1))
+                z1[:,:-1] += (1-w[:,:-1]) * z_
+                z1[:,1: ] += w[:,1:]      * z_
+            else:
+                raise ValueError(f"Error: |nx1-nx0|>1: nx1={nx1}, nx0={nx0}")
+        return z1
+
     def to_fine(self, z_coarse, dmstagda):
         cda = self.levels[-1]
         z_coarse_natural = cda.createNaturalVec()
         coarse_scatter, z_coarse_rank0 = PETSc.Scatter.toZero(z_coarse_natural) 
         # print(self.rank, flush=True)
         if self.rank==0:
+            """
             (NX,NY) = self.levels[-1].sizes
             print("dmstag L357: ", cda, NX, NY, z_coarse.shape, z_coarse_rank0.getSize())
             z_coarse_wide = np.zeros((NY, NX), dtype=np.float64)
             z_coarse_wide[:z_coarse.shape[0],:z_coarse.shape[1]] = z_coarse
             z_coarse_rank0[:] = z_coarse_wide
+            """
+            nx1, ny1 = self.levels[-1].sizes
+            z_coarse_rank0[:] = self.interp2d(z_coarse, ny1, nx1)
+
         coarse_scatter.scatter(z_coarse_rank0, z_coarse_natural, False, PETSc.Scatter.Mode.REVERSE)
         cda.naturalToGlobal(z_coarse_natural, self.vecs[-1])
         for i in range(self.nlevel-1, 0, -1):
