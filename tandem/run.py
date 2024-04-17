@@ -31,7 +31,7 @@ decompi = DecoratorMPI()
 
 class Tandem(object):
     @decompi.finalize
-    def __init__(self, outpath="out2", job_id="0000000", job_name="forward_C1S1B1GR030_TakagawaZSlip3_Manning0.000"):
+    def __init__(self, outpath="outC1S1B1", job_id="0000000", job_name="forward_C1S1B1GR480_TakagawaZSlip3_Manning0.000"):
         print("outpath:", outpath)
         print("job_id:", job_id)
         print("job_name:", job_name, flush=True)
@@ -107,7 +107,7 @@ class Tandem(object):
         gmax = np.max(self.ocean.gN)
         self.dt = 0.99 * lmin / np.sqrt(gmax * dmax)
         if self.resolution==480:
-            self.dt = np.minimum(self.dt, 12.0)
+            self.dt = np.minimum(self.dt, 15.0)
         elif self.resolution==240:
             self.dt = np.minimum(self.dt, 6.0)
         elif self.resolution==120:
@@ -178,7 +178,7 @@ class Tandem(object):
             #self.ocean.add_raised_cosine(variable=self.ocean.h, 
             #                            i=i_src, j=j_src, amplitude=amplitude, radius=200e3)
         #self.ocean.save_xr_dataset_in_parallel("tandem_stag_0")
-        time_integration_type = "short"
+        time_integration_type = "long"
         if time_integration_type == "long":
             step_max = int((3600 * 9) / self.dt)  + 1
             step_interval = int(np.round(30 / self.dt))
@@ -208,7 +208,7 @@ class Tandem(object):
         time_MN = time_h + 0.5 * self.dt 
         xds_record_d = xr.Dataset({"d":self.ocean.get_xr_data_array_recorder(self.ocean.d, [0], attrs=attrs_d)})
         xds_record_d.d[0] = self.ocean.get_local_array(self.ocean.d)
-        xds_record_d.to_netcdf(self.outpath + f"d/d_{self.rank:04}.nc")         
+        xds_record_d.to_netcdf(self.outpath + f"/d/d_{self.rank:04}.nc")         
         xds_record_h = xr.Dataset({"h":self.ocean.get_xr_data_array_recorder(self.ocean.h, time_h, attrs=attrs_h)})
         #xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
         #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
@@ -248,9 +248,9 @@ class Tandem(object):
                     ymin = float(xds_record_h.latitude.min()) -4
                     ymax = float(xds_record_h.latitude.max()) +4
                     if xmin<lon0<xmax and ymin<lat0<ymax:
-                        xds_record_h.to_netcdf(self.outpath + f"h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
+                        xds_record_h.to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
                 else:
-                    xds_record_h.to_netcdf(self.outpath + f"h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
+                    xds_record_h.to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
                     #xds_record_M.to_netcdf(self.outpath + f"/record_M_{self.rank:04}_{idx_save:03}.nc") # save the record
                     #xds_record_N.to_netcdf(self.outpath + f"/record_N_{self.rank:04}_{idx_save:03}.nc") # save the record
         
@@ -280,7 +280,7 @@ class Tandem(object):
         #self.ocean.save_xr_dataset_in_parallel("tandem_stag_1")
         xds_record_hmax = xr.Dataset({"hmax":self.ocean.get_xr_data_array_recorder(self.ocean.hmax, [0], attrs=attrs_d)})
         xds_record_hmax.hmax[0] = self.ocean.get_local_array(self.ocean.hmax)
-        xds_record_hmax.to_netcdf(self.outpath + f"hmax/hmax_{self.rank:04}.nc")         
+        xds_record_hmax.to_netcdf(self.outpath + f"/hmax/hmax_{self.rank:04}.nc")         
 
         self.ocean.station.save_timeseries(self.outpath + f"/timeseries{self.rank:04}.mseed")
         #print(index_src, i_src, j_src)
