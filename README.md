@@ -116,3 +116,9 @@ source ~/.bashrc
 ```sh
 python -m pip install git+https://github.com/tomographyyy/tandem.git
 ```
+
+## How to run
+
+```sh
+mpiexec -n 8 python tandem/run.py
+```
