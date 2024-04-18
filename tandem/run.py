@@ -31,19 +31,26 @@ decompi = DecoratorMPI()
 
 class Tandem(object):
     @decompi.finalize
-    def __init__(self, outpath="outC0S0B0", job_id="0000000", job_name="forward_C0S0B0GR480_TakagawaZSlip3_Manning0.000"):
-        #print("outpath:", outpath)
-        #print("job_id:", job_id)
-        #print("job_name:", job_name, flush=True)
+    def __init__(self, settings="settings.json"):
+        outpath="outC0S0B0"
+        job_id="0000000"
+        job_name="forward_C0S0B0GR480_TakagawaZSlip3_Manning0.000"
         self.comm = MPI.COMM_WORLD
         self.rank = self.comm.rank
         self.outpath = outpath
+        self.save_values = "hMN"
+
         if self.rank==0:
             if os.path.exists(self.outpath):
                 shutil.rmtree(self.outpath)
             os.makedirs(self.outpath, exist_ok=True)
             os.makedirs(self.outpath + "/d", exist_ok=True)
-            os.makedirs(self.outpath + "/h", exist_ok=True)
+            if "h" in self.save_values:
+                os.makedirs(self.outpath + "/h", exist_ok=True)
+            if "M" in self.save_values:
+                os.makedirs(self.outpath + "/M", exist_ok=True)
+            if "N" in self.save_values:
+                os.makedirs(self.outpath + "/N", exist_ok=True)
             os.makedirs(self.outpath + "/hmax", exist_ok=True)
         self.job_id = job_id
         self.Nonlinear = "_NL" in job_name
@@ -56,7 +63,7 @@ class Tandem(object):
         self.resolution = 8 * 60 # arcsec
         Manning = float(manning_option[7:]) # Manning 0.025
 
-        taper_width = 20
+        taper_width = 40
         westend, eastend, northend, southend = [164, 240, 64, -4] # [degree]
         _dsh = 180 * 60 // 675 # [arcmin] minimum mesh size to apply shtns
         nW = int(np.floor((westend  - taper_width * self.resolution / 3600) / (_dsh / 60)))
@@ -113,17 +120,18 @@ class Tandem(object):
         dmax = self.ocean.get_max(self.ocean.d)
         lx = self.ocean.dx * self.ocean.R * np.min(np.cos(self.ocean.yN))
         ly = self.ocean.dy * self.ocean.R
-        #lmin = lx * ly / (lx + ly) #np.sqrt(lx**2 + ly**2)
-        lmin = np.sqrt(lx**2 + ly**2)
+        lmin = lx * ly / (lx + ly) #np.sqrt(lx**2 + ly**2)
+        #lmin = np.sqrt(lx**2 + ly**2)
         gmax = np.max(self.ocean.gN)
         self.dt = 0.99 * lmin / np.sqrt(gmax * dmax)
         
-        t_max = 3600 * 7 # [sec]
-        t_save_interval = 30 # [sec]
-        step_interval = int(np.ceil(t_save_interval / self.dt))
-        if step_interval==0:
-            raise ValueError("t_save_interval must be less than dt.")
-        self.dt = t_save_interval / step_interval
+        t_max = 3600 * 3 # [sec]
+        self.rec_interval_time = 60 * 10 # [sec]
+        self.rec_interval_step = int(np.ceil(self.rec_interval_time / self.dt))
+        self.dt = self.rec_interval_time / self.rec_interval_step
+        self.step_max = int(np.ceil(t_max / self.dt))
+        self.chunk_size = 6 # number of data in a chunk
+        self.chunk_step = self.chunk_size * self.rec_interval_step
 
         if self.rank==0:
             print("dt   ", self.dt, "dtmax", lmin / np.sqrt(gmax * dmax))
@@ -149,15 +157,8 @@ class Tandem(object):
 
         i_src = np.max(self.comm.allgather(i_src))
         j_src = np.max(self.comm.allgather(j_src))
-        #self.ocean.add(variable=self.ocean.h, i=i_src, j=j_src, amount=1e-6)
         amplitude = 1#1e-6
         if self.job_name[:7] == "forward":
-            if False:
-                self.ocean.add_raised_cosine(variable=self.ocean.h, 
-                                            i=i_src, j=j_src, amplitude=amplitude, radius=200e3)
-            if False:
-                self.ocean.add_raised_cosine_xy(variable=self.ocean.h, 
-                                            lon=-24, lat=0, amplitude=amplitude, radius=100e3)
             if self.job_name == "forward":
                 self.ocean.add_okada(displacement=1.0*amplitude) # changed to get waveforms of model S & G with resolution of 60 & 30 sec
             else:
@@ -165,28 +166,11 @@ class Tandem(object):
                 
         else:
             self.ocean.add_numerical_delta(variable=self.ocean.h, i=i_src, j=j_src, amplitude=amplitude)
-            #self.ocean.add_raised_cosine(variable=self.ocean.h, 
-            #                            i=i_src, j=j_src, amplitude=amplitude, radius=200e3)
-        #self.ocean.save_xr_dataset_in_parallel("tandem_stag_0")
-        time_integration_type = "long"
-        if time_integration_type == "long":
-            step_max = int((3600 * 9) / self.dt)  + 1
-            step_interval = int(np.round(30 / self.dt))
-            save_interval = int(np.round(3600 / self.dt)) 
-        elif time_integration_type == "mid":
-            step_max = int((3600 * 3) / self.dt)  + 1
-            step_interval = int(np.round(30 / self.dt))
-            save_interval = int(np.round(3600 / self.dt)) 
-        else:
-            step_max = 200 #1200
-            step_interval = 1
-            save_interval = 50 
             
-        #self.dt = 600. / 8 #/ np.sqrt(7000)
         is_adjoint = self.job_name[:7] == "adjoint"
         if self.ocean.has_Boussinesq:
             self.ocean.setup_ksp(is_adjoint=is_adjoint)
-        self.ocean.station.setup_logger(step_max, self.dt, starttime="2000-01-01T00:00:00.000000Z")
+        self.ocean.station.setup_logger(self.step_max, self.dt, starttime="2000-01-01T00:00:00.000000Z")
         ij_list = self.ocean.station.get_list_ij()
         # set up recorder
         attrs_d = {"units": "m", "standard_name":"depth", "long_name":"water depth"}
@@ -195,49 +179,51 @@ class Tandem(object):
         attrs_N = {"units": "$m^3/s$", "standard_name":"flux", "long_name":"southward flux"}
         attrs_hmax = {"units": "m", "standard_name":"elevation", "long_name":"maximum water surface height"}
         
-        time_h = np.arange(0, save_interval, step_interval) * self.dt
-        time_MN = time_h + 0.5 * self.dt 
+        
+        #time_h = np.arange(self.stack_size) * self.dt
+        #time_MN = time_h + 0.5 * self.dt 
         xds_record_d = xr.Dataset({"d":self.ocean.get_xr_data_array_recorder(self.ocean.d, [0], attrs=attrs_d)})
         xds_record_d.d[0] = self.ocean.get_local_array(self.ocean.d)
         xds_record_d.isel(time=0).transpose().to_netcdf(self.outpath + f"/d/d_{self.rank:04}.nc")         
-        xds_record_h = xr.Dataset({"h":self.ocean.get_xr_data_array_recorder(self.ocean.h, time_h, attrs=attrs_h)})
-        #xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
-        #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
-        for step in range(step_max):
-            if step % save_interval==0:
-                save_steps = step + np.arange(0, save_interval, step_interval)
+        """if "h" in self.save_values:
+            xds_record_h = xr.Dataset({"h":self.ocean.get_xr_data_array_recorder(self.ocean.h, time_h, attrs=attrs_h)})
+        if "M" in self.save_values:
+            xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
+        if "N" in self.save_values:
+            xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})"""
+        for step in range(self.step_max):
+            # initialize chunk xds_racords
+            if step % self.chunk_step==0:
+                save_steps = step + np.arange(self.chunk_size) * self.rec_interval_step
                 time_h = save_steps * self.dt
                 time_MN = time_h + 0.5 * self.dt 
-                xds_record_h = xr.Dataset({"h":self.ocean.get_xr_data_array_recorder(self.ocean.h, time_h, attrs=attrs_h)})
-                #xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
-                #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
-            #values = self.ocean.h.get_values(ij_list)
+                if "h" in self.save_values:
+                    xds_record_h = xr.Dataset({"h":self.ocean.get_xr_data_array_recorder(self.ocean.h, time_h, attrs=attrs_h)})
+                if "M" in self.save_values:
+                    xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
+                if "N" in self.save_values:
+                    xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
             values = self.ocean.get_hMNUV(ij_list)
-            #values = self.ocean.get_filtered_h(ij_list)
             self.ocean.station.record(step, step*self.dt, values)
-            if step % step_interval==0:
-                idx_chunk = (step % save_interval) // step_interval
-                xds_record_h.h[idx_chunk] = self.ocean.get_local_array(self.ocean.h) # record the value
-                #xds_record_M.M[idx_chunk] = self.ocean.get_local_array(self.ocean.M) # record the value
-                #xds_record_N.N[idx_chunk] = self.ocean.get_local_array(self.ocean.N) # record the value
-            if (step + 1) % save_interval==0:
-                idx_save = step // save_interval
-                output_small_area = False
-                if output_small_area: # output small area
-                    lon0 = 360 - 132.25
-                    lat0 = 52.5
-                    xmin = float(xds_record_h.longitude.min()) -4
-                    xmax = float(xds_record_h.longitude.max()) +4
-                    ymin = float(xds_record_h.latitude.min()) -4
-                    ymax = float(xds_record_h.latitude.max()) +4
-                    if xmin<lon0<xmax and ymin<lat0<ymax:
-                        xds_record_h.transpose("time", "latitude", "longitude")\
-                            .to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
-                else:
+            if step % self.rec_interval_step==0:
+                idx_chunk = (step % self.chunk_step) // self.rec_interval_step
+                if "h" in self.save_values:
+                    xds_record_h.h[idx_chunk] = self.ocean.get_local_array(self.ocean.h) # record the value
+                if "M" in self.save_values:
+                    xds_record_M.M[idx_chunk] = self.ocean.get_local_array(self.ocean.M) # record the value
+                if "N" in self.save_values:
+                    xds_record_N.N[idx_chunk] = self.ocean.get_local_array(self.ocean.N) # record the value
+            if (step + 1) % self.chunk_step==0:
+                idx_save = step // self.chunk_step
+                if "h" in self.save_values:
                     xds_record_h.transpose("time", "latitude", "longitude")\
                         .to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
-                    #xds_record_M.to_netcdf(self.outpath + f"/record_M_{self.rank:04}_{idx_save:03}.nc") # save the record
-                    #xds_record_N.to_netcdf(self.outpath + f"/record_N_{self.rank:04}_{idx_save:03}.nc") # save the record
+                if "M" in self.save_values:
+                    xds_record_M.transpose("time", "latitude", "longitude")\
+                        .to_netcdf(self.outpath + f"/M/M_{self.rank:04}_{idx_save:03}.nc") # save the record
+                if "N" in self.save_values:
+                    xds_record_N.transpose("time", "latitude", "longitude")\
+                        .to_netcdf(self.outpath + f"/N/N_{self.rank:04}_{idx_save:03}.nc") # save the record
         
             COR=True
             SPG=True
