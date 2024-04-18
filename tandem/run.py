@@ -31,13 +31,14 @@ decompi = DecoratorMPI()
 
 
 settings = dict(
-    Coriolis=True,
-    integration="forward", # ["forward", "backward", "adjoint"]
-    advection=False,
+    #calc condition
+    integration="adjoint", # ["forward", "backward", "adjoint"]
     compressibility=True,
     SAL=True, # Self-Attraction and Loading effect
-    sht_reduction= "auto", # ["auto", 1-5]
     Boussinesq=True,
+    Coriolis=True,
+    advection=False,
+    sht_reduction= "auto", # ["auto", 1-5]
     resolution= 480, # [15, 30, 60, 120, 240, 480 sec]
     Manning=0.0, # 0.025
     sponge=dict(
@@ -52,6 +53,8 @@ settings = dict(
         south=-4, # [deg]
         resolution=480 # [sec]
         ),
+    
+    # input files
     topo=dict(
         file="data/gebco2023_8min_median/GEBCO*.nc",
         depth = False,  # elevation --> False / depth --> True
@@ -63,14 +66,14 @@ settings = dict(
         file="data/station.csv", 
         header=1
         ),
+    point=dict(
+        station_id=11,
+        source=False
+        ),
     fault=dict(
         file="data/fault.csv",
         header=1,
-        source=True 
-        ),
-    point=dict(
-        station_id=0,
-        source=False
+        source=True,
         ),
     
     # time
@@ -110,7 +113,7 @@ class Tandem(object):
             os.makedirs(self.outpath + "/hmax", exist_ok=True)
         _dsh = 180 * 60 // 675 # [arcmin] minimum mesh size to apply shtns
         _wr = settings["sponge"]["width"] * settings["grid"]["resolution"] / 3600
-        nW = int(np.floor((settings["grid"]["west" ] - _wr) / (_dsh / 60)))
+        nW = int(np.floor((settings["grid"]["west" ] - _wr) / (_dsh / 60)))       #############南北方向のメッシュ数がアジョイントモデルの時に２つ食い違う。赤道を原点として割り切れる位置を端に設定するのではなく、北極を原点として割り切れる位置にする。180度を675分割しているが、これは90度の赤道を通らない？
         nE = int(np.ceil ((settings["grid"]["east" ] + _wr) / (_dsh / 60)))
         nN = int(np.ceil ((settings["grid"]["north"] + _wr) / (_dsh / 60)))
         nS = int(np.floor((settings["grid"]["south"] - _wr) / (_dsh / 60)))
@@ -196,6 +199,8 @@ class Tandem(object):
         if settings["integration"] == "forward":
             index_src = 0
         else:
+            settings["fault"]["source"] = False
+            settings["point"]["source"] = True
             index_src = int(settings["point"]["station_id"])
         for _, row in self.ocean.station.dataframe.iterrows():
             if row.station==index_src:
@@ -204,6 +209,7 @@ class Tandem(object):
 
         i_src = np.max(self.comm.allgather(i_src))
         j_src = np.max(self.comm.allgather(j_src))
+        print(settings["point"]["station_id"], i_src, j_src)
         amplitude = 1#1e-6
         if settings["integration"] == "forward":
             if settings["fault"]["source"]:
@@ -277,19 +283,26 @@ class Tandem(object):
                                    with_sponge=settings["sponge"]["width"]>0, 
                                    with_Sommerfeld=settings["open_boundary"])
             elif settings["integration"] == "backward":
-                self.ocean.forward(+self.dt, with_Coriolis=self.Coriolis, is_reversal=True , 
-                                   with_sponge=self.sponge_layer, with_Sommerfeld=self.open_boundary)
+                self.ocean.forward(+self.dt, 
+                                   with_Coriolis=settings["Coriolis"], 
+                                   is_reversal=True , 
+                                   with_sponge=settings["sponge"]["width"]>0, 
+                                   with_Sommerfeld=settings["open_boundary"])
             elif settings["integration"] == "adjoint":
-                self.ocean.adjoint(+self.dt, with_Coriolis=self.Coriolis, 
-                                   with_sponge=self.sponge_layer, with_Sommerfeld=self.open_boundary)
-            if self.rank==0:
-                if step % 10 ==0:
-                    hmax = self.ocean.get_max(self.ocean.h)
-                    hmin = self.ocean.get_min(self.ocean.h)
+                self.ocean.adjoint(+self.dt, 
+                                   with_Coriolis=settings["Coriolis"], 
+                                   with_sponge=settings["sponge"]["width"]>0, 
+                                   with_Sommerfeld=settings["open_boundary"])
+            if step % 10 ==0:
+                hmax = self.ocean.get_max(self.ocean.h)
+                hmin = self.ocean.get_min(self.ocean.h)
+                if self.rank==0:
                     print(f"{step}/{self.step_max} {hmax:10.2f} {hmin:10.2f}", end="\t")
-                else:
+            else:
+                if self.rank==0:
                     print(".", end="")
-                if (step + 1) % 10 ==0:
+            if (step + 1) % 10 ==0:
+                if self.rank==0:
                     print()
         # save hmax
         xds_record_hmax = xr.Dataset({"hmax":self.ocean.get_xr_data_array_recorder(self.ocean.hmax, [0], attrs=attrs_hmax)})
