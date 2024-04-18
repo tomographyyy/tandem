@@ -31,7 +31,7 @@ decompi = DecoratorMPI()
 
 class Tandem(object):
     @decompi.finalize
-    def __init__(self, outpath="outC1S1B0", job_id="0000000", job_name="forward_C1S1B0GR480_TakagawaZSlip3_Manning0.000"):
+    def __init__(self, outpath="outC0S0B0", job_id="0000000", job_name="forward_C0S0B0GR480_TakagawaZSlip3_Manning0.000"):
         #print("outpath:", outpath)
         #print("job_id:", job_id)
         #print("job_name:", job_name, flush=True)
@@ -193,12 +193,13 @@ class Tandem(object):
         attrs_h = {"units": "m", "standard_name":"elevation", "long_name":"water surface elevation"}
         attrs_M = {"units": "$m^3/s$", "standard_name":"flux", "long_name":"eastward flux"}
         attrs_N = {"units": "$m^3/s$", "standard_name":"flux", "long_name":"southward flux"}
-
+        attrs_hmax = {"units": "m", "standard_name":"elevation", "long_name":"maximum water surface height"}
+        
         time_h = np.arange(0, save_interval, step_interval) * self.dt
         time_MN = time_h + 0.5 * self.dt 
         xds_record_d = xr.Dataset({"d":self.ocean.get_xr_data_array_recorder(self.ocean.d, [0], attrs=attrs_d)})
         xds_record_d.d[0] = self.ocean.get_local_array(self.ocean.d)
-        xds_record_d.to_netcdf(self.outpath + f"/d/d_{self.rank:04}.nc")         
+        xds_record_d.isel(time=0).transpose().to_netcdf(self.outpath + f"/d/d_{self.rank:04}.nc")         
         xds_record_h = xr.Dataset({"h":self.ocean.get_xr_data_array_recorder(self.ocean.h, time_h, attrs=attrs_h)})
         #xds_record_M = xr.Dataset({"M":self.ocean.get_xr_data_array_recorder(self.ocean.M, time_MN, attrs=attrs_M)})
         #xds_record_N = xr.Dataset({"N":self.ocean.get_xr_data_array_recorder(self.ocean.N, time_MN, attrs=attrs_N)})
@@ -230,9 +231,11 @@ class Tandem(object):
                     ymin = float(xds_record_h.latitude.min()) -4
                     ymax = float(xds_record_h.latitude.max()) +4
                     if xmin<lon0<xmax and ymin<lat0<ymax:
-                        xds_record_h.to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
+                        xds_record_h.transpose("time", "latitude", "longitude")\
+                            .to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
                 else:
-                    xds_record_h.to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
+                    xds_record_h.transpose("time", "latitude", "longitude")\
+                        .to_netcdf(self.outpath + f"/h/h_{self.rank:04}_{idx_save:03}.nc") # save the record
                     #xds_record_M.to_netcdf(self.outpath + f"/record_M_{self.rank:04}_{idx_save:03}.nc") # save the record
                     #xds_record_N.to_netcdf(self.outpath + f"/record_N_{self.rank:04}_{idx_save:03}.nc") # save the record
         
@@ -243,7 +246,6 @@ class Tandem(object):
                 self.ocean.forward(+self.dt, with_Coriolis=COR, is_reversal=False, with_sponge=SPG, with_Sommerfeld=SMF)
             elif self.job_name[:7] == "reverse":
                 self.ocean.forward(+self.dt, with_Coriolis=COR, is_reversal=True, with_sponge=SPG, with_Sommerfeld=SMF)
-                # self.ocean.forward(-self.dt, with_Coriolis=COR, is_reversal=False, with_sponge=SPG, with_Sommerfeld=SMF)
             elif self.job_name[:7] == "adjoint":
                 self.ocean.adjoint(+self.dt, with_Coriolis=COR, with_sponge=SPG, with_Sommerfeld=SMF)
             hmax = self.ocean.get_max(self.ocean.h)
@@ -251,9 +253,10 @@ class Tandem(object):
             if self.rank==0:
                 print(f"{step} {hmax:10.2f} {hmin:10.2f}")
             i,j=self.ocean.h.get_slice()
-        xds_record_hmax = xr.Dataset({"hmax":self.ocean.get_xr_data_array_recorder(self.ocean.hmax, [0], attrs=attrs_d)})
+        xds_record_hmax = xr.Dataset({"hmax":self.ocean.get_xr_data_array_recorder(self.ocean.hmax, [0], attrs=attrs_hmax)})
         xds_record_hmax.hmax[0] = self.ocean.get_local_array(self.ocean.hmax)
-        xds_record_hmax.to_netcdf(self.outpath + f"/hmax/hmax_{self.rank:04}.nc")         
+        xds_record_hmax.isel(time=0).transpose()\
+            .to_netcdf(self.outpath + f"/hmax/hmax_{self.rank:04}.nc")         
 
         self.ocean.station.save_timeseries(self.outpath + f"/timeseries{self.rank:04}.mseed")
 
