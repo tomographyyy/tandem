@@ -31,11 +31,15 @@ decompi = DecoratorMPI()
 
 
 settings = dict(
+    # output
+    output_directory="out",
+    save_params="hMN", # ["", "h", "hMN"]
+
     #calc condition
-    integration="adjoint", # ["forward", "backward", "adjoint"]
+    integration="forward", # ["forward", "backward", "adjoint"]
     compressibility=True,
     SAL=True, # Self-Attraction and Loading effect
-    Boussinesq=True,
+    Boussinesq=False,
     Coriolis=True,
     advection=False,
     sht_reduction= "auto", # ["auto", 1-5]
@@ -77,14 +81,11 @@ settings = dict(
         ),
     
     # time
-    t_max = 3600 * 1, # [sec]
+    t_max = 3600 * 7, # [sec]
     rec_interval_time = 60 * 10, # [sec]
     dt = "auto",
     chunk_size = 6, # number of data in a chunk
     
-    # output
-    output_directory="out",
-    save_params="hMN", # ["", "h", "hMN"]
     )
 
 
