@@ -37,11 +37,20 @@ class SolidEarth:
             uG_Itp     = InterpolatedUnivariateSpline(thetaRad,uG,    k=1)
             uG_SAL_Itp = InterpolatedUnivariateSpline(thetaRad,uG_SAL,k=1)
 
-            lmax = sh_n - 1   # maximum degree of spherical harmonic representation.
-            mmax = sh_n - 1   # maximum order of spherical harmonic representation.
-            
-            self.sh = shtns.sht(lmax, mmax)     # create sht object with given lmax and mmax (orthonormalized)
-            nlat, nphi = self.sh.set_grid()     # build default grid (gauss grid, phi-contiguous)
+            if True:
+                nlons = sh_n * 2
+                nlats = sh_n
+                ntrunc = nlons//3
+                self.sh = shtns.sht(ntrunc, ntrunc, 1,
+                                    shtns.sht_orthonormal + shtns.SHT_NO_CS_PHASE)
+                self.sh.set_grid(nlats, nlons,
+                        shtns.sht_quick_init  | shtns.SHT_PHI_CONTIGUOUS, 1.e-10)
+            else:
+                lmax = sh_n - 1   # maximum degree of spherical harmonic representation.
+                mmax = sh_n - 1   # maximum order of spherical harmonic representation.
+                
+                self.sh = shtns.sht(lmax, mmax)     # create sht object with given lmax and mmax (orthonormalized)
+                nlat, nphi = self.sh.set_grid()     # build default grid (gauss grid, phi-contiguous)
             theta = np.arccos(self.sh.cos_theta)[:]
 
             if IGF: # use integrated Green's function

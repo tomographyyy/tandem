@@ -25,7 +25,7 @@ from tandem.decompi import DecoratorMPI
 import cProfile
 import pandas
 import shutil
-from types import SimpleNamespace
+import json
 
 decompi = DecoratorMPI()
 
@@ -209,7 +209,6 @@ class Tandem(object):
 
         i_src = np.max(self.comm.allgather(i_src))
         j_src = np.max(self.comm.allgather(j_src))
-        print(settings["point"]["station_id"], i_src, j_src)
         amplitude = 1#1e-6
         if settings["integration"] == "forward":
             if settings["fault"]["source"]:
@@ -235,6 +234,11 @@ class Tandem(object):
         xds_record_d = xr.Dataset({"d":self.ocean.get_xr_data_array_recorder(self.ocean.d, [0], attrs=attrs_d)})
         xds_record_d.d[0] = self.ocean.get_local_array(self.ocean.d)
         xds_record_d.isel(time=0).transpose().to_netcdf(self.outpath + f"/d/d_{self.rank:04}.nc")         
+
+        # record settings
+        if self.rank==0:
+            with open(f'{settings["output_directory"]}/settings.json', "w") as f:
+                json.dump(settings, f, indent=2)
 
         # main loop
         for step in range(self.step_max):
