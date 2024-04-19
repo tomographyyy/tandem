@@ -3,6 +3,12 @@
 **T**sunami **A**djoint simulator for **N**onpoint sources using **D**ispersive wave equations on a self-gravitating **E**arth **M**odel  
 
 
+![Fig01](https://github.com/tomographyyy/tandem/assets/34155315/95713702-778b-476f-a0bf-944c79ae1aa9)
+
+  
+![model_difference](https://github.com/tomographyyy/tandem/assets/34155315/ec8608e8-7cea-4471-a1dd-0e8afd444b7f)
+
+
 ## Technical References
 - Takagawa, T., Allgeyer, S. & Cummins, P., Adjoint Synthesis for Trans-oceanic Tsunami Waveforms and Simultaneous Inversion of Fault Geometry and Slip Distribution (submitted) 
 
@@ -117,8 +123,12 @@ source ~/.bashrc
 python -m pip install git+https://github.com/tomographyyy/tandem.git
 ```
 
-## How to run
+## Run TANDEM
 
 ```sh
 mpiexec -n 8 python tandem/run.py
 ```
+
+## Visualize outputs
+
+- Example ipynb is provided. See "view_results.ipynb"
