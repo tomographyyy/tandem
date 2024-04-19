@@ -1,0 +1,49 @@
+{
+  "output_directory": "outModel4",
+  "save_params": "hMN",
+  "integration": "forward",
+  "compressibility": true,
+  "SAL": true,
+  "Boussinesq": true,
+  "Coriolis": true,
+  "advection": false,
+  "sht_reduction": 1,
+  "resolution": 480,
+  "Manning": 0.0,
+  "sponge": {
+    "width": 40,
+    "damping_factor": 0.01
+  },
+  "open_boundary": true,
+  "grid": {
+    "west": 158.66666666666666,
+    "east": 245.33333333333334,
+    "north": 69.33333333333333,
+    "south": -9.333333333333334,
+    "resolution": 480
+  },
+  "topo": {
+    "file": "data/gebco2023_8min_median/GEBCO*.nc",
+    "depth": false,
+    "lon": "lon",
+    "lat": "lat",
+    "z": "elevation"
+  },
+  "station": {
+    "file": "data/station.csv",
+    "header": 1
+  },
+  "point": {
+    "station_id": 11,
+    "source": false
+  },
+  "fault": {
+    "file": "data/fault.csv",
+    "header": 1,
+    "source": true
+  },
+  "t_max": 25200,
+  "rec_interval_time": 600,
+  "dt": 13.636363636363637,
+  "chunk_size": 6
+}
