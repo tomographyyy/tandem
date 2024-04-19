@@ -136,7 +136,7 @@ class Station(object):
             self.logger[:, 0 , step] = time
             self.logger[:, 1:, step] = values # (nstation, nvalues, nstep)
     
-    def save_timeseries(self, filename):
+    def save_timeseries(self, filepath):
         if len(self.dataframe) > 0:
             headers = self.get_list_stats()
             #traces=[]
@@ -150,7 +150,7 @@ class Station(object):
                     "U": self.logger[k,4,:],
                     "V": self.logger[k,5,:],
                 }
-                np.savez(filename[:-8] + f"_station{stid:04}.npz", **data)
+                np.savez(f"{filepath}/timeseries_station{stid:04}.npz", **data)
 
 class RaisedCosineFilter(object):
     def __init__(self, lat0, r, dlon, dlat, R = 6378137):

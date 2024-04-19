@@ -313,6 +313,8 @@ class Tandem(object):
         xds_record_hmax.hmax[0] = self.ocean.get_local_array(self.ocean.hmax)
         xds_record_hmax.isel(time=0).transpose()\
             .to_netcdf(self.outpath + f"/hmax/hmax_{self.rank:04}.nc")
+        
+        self.ocean.station.save_timeseries(self.outpath)
         if self.rank==0:
             print("\n===== finish! =====")
 
