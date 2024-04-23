@@ -193,7 +193,22 @@ class Ocean(object):
             elev_local = nc[z][j_near, i_near]
         else:
             elev_local = nc[z][j_near, i_near] * -1
-        self.d.vecArray[i0:i1,j0:j1] = np.maximum(elev_local.T, 0)
+        #self.d.vecArray[i0:i1,j0:j1] = np.maximum(elev_local.T, 0)
+        self.d.vecArray[i0:i1,j0:j1] = elev_local.T
+        if i0==0:
+            self.d.vecArray[i0-1,j0:j1] = self.d.vecArray[i0,j0:j1]
+        if i1==iMax:
+            self.d.vecArray[i1,j0:j1] = self.d.vecArray[i1-1,j0:j1]
+        if j0==0:
+            self.d.vecArray[i0:i1,j0-1] = self.d.vecArray[i0:i1,j0]
+        if j1==jMax:
+            self.d.vecArray[i0:i1,j1] = self.d.vecArray[i0:i1,j1-1]
+        self.d.local_to_local()
+
+    def remove_land_elevation(self, ):
+        (i0, i1), (j0, j1)  = self.d.da.getRanges()
+        (iMax, jMax) = self.d.da.getSizes()
+        self.d.vecArray[i0:i1,j0:j1] = np.maximum(self.d.vecArray[i0:i1,j0:j1], 0)
         if i0==0:
             self.d.vecArray[i0-1,j0:j1] = self.d.vecArray[i0,j0:j1]
         if i1==iMax:

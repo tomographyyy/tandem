@@ -150,6 +150,14 @@ class Tandem(object):
                                    lat=settings["topo"]["lat"], 
                                    z=settings["topo"]["z"])
         
+        # record d
+        attrs_d = {"units": "m", "standard_name":"depth", "long_name":"water depth"}
+        xds_record_d = xr.Dataset({"d":self.ocean.get_xr_data_array_recorder(self.ocean.d, [0], attrs=attrs_d)})
+        xds_record_d.d[0] = self.ocean.get_local_array(self.ocean.d)
+        xds_record_d.isel(time=0).transpose().to_netcdf(self.outpath + f"/d/d_{self.rank:04}.nc")         
+
+        self.ocean.remove_land_elevation()
+
         self.ocean.setup(taper_width=settings["sponge"]["width"], 
                                     station_csv=settings["station"]["file"],
                                     compressible=settings["compressibility"])
@@ -169,6 +177,7 @@ class Tandem(object):
         self.ocean.setup_okada(**params)
 
         dmax = self.ocean.get_max(self.ocean.d)
+        print("dmax", dmax)
         lx = self.ocean.dx * self.ocean.R * np.min(np.cos(self.ocean.yN))
         ly = self.ocean.dy * self.ocean.R
         lmin = lx * ly / (lx + ly) #np.sqrt(lx**2 + ly**2)
@@ -225,17 +234,11 @@ class Tandem(object):
         ij_list = self.ocean.station.get_list_ij()
         
         # set up attrs
-        attrs_d = {"units": "m", "standard_name":"depth", "long_name":"water depth"}
         attrs_h = {"units": "m", "standard_name":"elevation", "long_name":"water surface elevation"}
         attrs_M = {"units": "$m^3/s$", "standard_name":"flux", "long_name":"eastward flux"}
         attrs_N = {"units": "$m^3/s$", "standard_name":"flux", "long_name":"southward flux"}
         attrs_hmax = {"units": "m", "standard_name":"elevation", "long_name":"maximum water surface height"}
         
-        # record d
-        xds_record_d = xr.Dataset({"d":self.ocean.get_xr_data_array_recorder(self.ocean.d, [0], attrs=attrs_d)})
-        xds_record_d.d[0] = self.ocean.get_local_array(self.ocean.d)
-        xds_record_d.isel(time=0).transpose().to_netcdf(self.outpath + f"/d/d_{self.rank:04}.nc")         
-
         # record settings
         if self.rank==0:
             with open(f'{settings["output_directory"]}/settings.json', "w") as f:
