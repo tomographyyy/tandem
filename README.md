@@ -133,6 +133,6 @@ python -m pip install git+https://github.com/tomographyyy/tandem.git
 mpiexec -n 8 python tandem/run.py
 ```
 
-## Visualize outputs
+## View results
 
-- Example ipynb is provided. See "view_results.ipynb"
+- [view_results.ipynb](https://github.com/tomographyyy/tandem/blob/main/view_results.ipynb)
