@@ -389,8 +389,8 @@ class Ocean(object):
             _water = self.tmpM1 # location="left"
             _water.vecArray[i[0],j[0]] = 1
             _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[-1],j[0]] > Dmin
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[-1],j[0]] > Dmin
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[ 0],j[1]] > Dmin
+            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[-1],j[1]] > Dmin
+            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[ 0],j[0]] > Dmin
             _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[ 0],j[1]] > Dmin
             _water.local_to_local()
             
@@ -477,8 +477,8 @@ class Ocean(object):
             _water = self.tmpN2 # location="bottom"
             _water.vecArray[i[0],j[0]] = 1
             _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[0],j[-1]] > Dmin
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[0],j[-1]] > Dmin
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[1],j[ 0]] > Dmin
+            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[0],j[ 0]] > Dmin
+            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[1],j[-1]] > Dmin
             _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[1],j[ 0]] > Dmin
             _water.local_to_local()
             
