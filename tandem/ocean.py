@@ -363,21 +363,15 @@ class Ocean(object):
             Mm = self.M_pre.vecArray[i[-1],j[0]]
             Mc = self.M_pre.vecArray[i[ 0],j[0]]
             Mp = self.M_pre.vecArray[i[ 1],j[0]]
-            adv_type=1
-            if adv_type==0:
-                adv0 = (Mc**2 * DMinv.vecArray[i[0],j[0]] - Mm**2 * DMinv.vecArray[i[-1],j[0]]) \
-                    * (Mc > 0) * (Mm > 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) * (self.d.vecArray[i[-1],j[0]] < Dmax) * mild_slope_w
-                adv1 = (Mp**2 * DMinv.vecArray[i[1],j[0]] - Mc**2 * DMinv.vecArray[i[ 0],j[0]]) \
-                    * (Mc < 0) * (Mp < 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) * (self.d.vecArray[i[0],j[0]] < Dmax) * mild_slope_e
-            elif adv_type==1:
-                adv0 = (Mc**2 * DMinv.vecArray[i[0],j[0]] 
-                        - Mm**2 * DMinv.vecArray[i[-1],j[0]] * (self.d.vecArray[i[-1],j[0]] < Dmax) * mild_slope_w
-                        ) \
-                    * (Mc > 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) 
-                adv1 = (Mp**2 * DMinv.vecArray[i[1],j[0]] * (self.d.vecArray[i[0],j[0]] < Dmax) * mild_slope_e
-                        - Mc**2 * DMinv.vecArray[i[ 0],j[0]]
-                        ) \
-                    * (Mc < 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) 
+
+            adv0 = (Mc**2 * DMinv.vecArray[i[0],j[0]] 
+                    - Mm**2 * DMinv.vecArray[i[-1],j[0]] * (self.d.vecArray[i[-1],j[0]] < Dmax) * (self.d.vecArray[i[-1],j[0]] > Dmin) * mild_slope_w
+                    ) \
+                * (Mc > 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) 
+            adv1 = (Mp**2 * DMinv.vecArray[i[1],j[0]] * (self.d.vecArray[i[0],j[0]] < Dmax) * (self.d.vecArray[i[0],j[0]] > Dmin) * mild_slope_e
+                    - Mc**2 * DMinv.vecArray[i[ 0],j[0]]
+                    ) \
+                * (Mc < 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) 
                 
             _DN = self.tmpN0
             _d = np.minimum(self.d.vecArray[i[0],j[-1]], self.d.vecArray[i[0],j[0]])
@@ -404,22 +398,17 @@ class Ocean(object):
             _MND.vecArray[i[0],j[0]] = self.M_pre.vecArray[i[0],j[0]] * _N.vecArray[i[0],j[0]] * DMinv.vecArray[i[0],j[0]]
             _MND.local_to_local()
 
-            if adv_type==0:
-                adv2 = (_MND.vecArray[i[0],j[0]] - _MND.vecArray[i[0],j[-1]])  * dt / self.dy / self.R \
-                        * (_N.vecArray[i[0],j[0]] > 0) * (_N.vecArray[i[0],j[-1]] > 0) \
-                        * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[-1]] < Dmax)
-                adv3 = (_MND.vecArray[i[0],j[1]] - _MND.vecArray[i[0],j[ 0]]) * dt / self.dy / self.R \
-                        * (_N.vecArray[i[0],j[1]] < 0) * (_N.vecArray[i[0],j[0]] < 0) \
-                        * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[ 1]] < Dmax)
-            elif adv_type==1:
-                adv2 = (_MND.vecArray[i[0],j[0]] 
-                        - _MND.vecArray[i[0],j[-1]] * (_N.vecArray[i[0],j[0]] > 0) * (_N.vecArray[i[0],j[-1]] > 0) \
-                                                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[-1]] < Dmax)
-                        )  * dt / self.dy / self.R 
-                adv3 = (_MND.vecArray[i[0],j[1]] * (_N.vecArray[i[0],j[1]] < 0) * (_N.vecArray[i[0],j[0]] < 0) \
-                                                 * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[ 1]] < Dmax)
-                        - _MND.vecArray[i[0],j[ 0]]
-                        ) * dt / self.dy / self.R 
+            adv2 = (_MND.vecArray[i[0],j[0]] - _MND.vecArray[i[0],j[-1]]) \
+                    * (_N.vecArray[i[0],j[0]] > 0) * (_N.vecArray[i[0],j[-1]] > 0) \
+                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[-1]] < Dmax) \
+                    * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[0],j[-1]] > Dmin) \
+                    * dt / self.dy / self.R 
+            adv3 = (_MND.vecArray[i[0],j[1]] - _MND.vecArray[i[0],j[ 0]]) \
+                    * (_N.vecArray[i[0],j[1]] < 0) * (_N.vecArray[i[0],j[0]] < 0) \
+                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[ 1]] < Dmax) \
+                    * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[0],j[ 1]] > Dmin) \
+                    * dt / self.dy / self.R 
+            
             self.M.vecArray[i[0], j[0]] -= (adv0 + adv1 + adv2 + adv3) * (tapering_factor_M==1)
             self.M.local_to_local()
 
@@ -452,20 +441,15 @@ class Ocean(object):
             Nm = self.N_pre.vecArray[i[0],j[-1]]
             Nc = self.N_pre.vecArray[i[0],j[ 0]]
             Np = self.N_pre.vecArray[i[0],j[ 1]]
-            if adv_type==0:
-                adv0 = (Nc**2 * DNinv.vecArray[i[0],j[0]] - Nm**2 * DNinv.vecArray[i[0],j[-1]]) \
-                    * (Nc > 0) * (Nm > 0) * dt / self.dy / self.R * (self.d.vecArray[i[0],j[-1]] < Dmax) * mild_slope_n
-                adv1 = (Np**2 * DNinv.vecArray[i[0],j[1]] - Nc**2 * DNinv.vecArray[i[0],j[ 0]]) \
-                    * (Nc < 0) * (Np < 0) * dt / self.dy / self.R * (self.d.vecArray[i[0],j[ 1]] < Dmax) * mild_slope_s
-            elif adv_type==1:
-                adv0 = (Nc**2 * DNinv.vecArray[i[0],j[0]] 
-                        - Nm**2 * DNinv.vecArray[i[0],j[-1]] * (self.d.vecArray[i[0],j[-1]] < Dmax) * mild_slope_n
-                        ) \
-                    * (Nc > 0) * dt / self.dy / self.R 
-                adv1 = (Np**2 * DNinv.vecArray[i[0],j[1]] * (self.d.vecArray[i[0],j[ 1]] < Dmax) * mild_slope_s
-                        - Nc**2 * DNinv.vecArray[i[0],j[ 0]]
-                        ) \
-                    * (Nc < 0) * dt / self.dy / self.R
+            
+            adv0 = (Nc**2 * DNinv.vecArray[i[0],j[0]] 
+                    - Nm**2 * DNinv.vecArray[i[0],j[-1]] * (self.d.vecArray[i[0],j[-1]] < Dmax) * (self.d.vecArray[i[0],j[-1]] > Dmin) * mild_slope_n
+                    ) \
+                * (Nc > 0) * dt / self.dy / self.R 
+            adv1 = (Np**2 * DNinv.vecArray[i[0],j[1]] * (self.d.vecArray[i[0],j[ 1]] < Dmax) * (self.d.vecArray[i[0],j[ 1]] > Dmin) * mild_slope_s
+                    - Nc**2 * DNinv.vecArray[i[0],j[ 0]]
+                    ) \
+                * (Nc < 0) * dt / self.dy / self.R
             
             _DM = self.tmpM0
             _d = np.minimum(self.d.vecArray[i[-1],j[0]], self.d.vecArray[i[0],j[0]])
@@ -492,22 +476,16 @@ class Ocean(object):
             _NMD.vecArray[i[0],j[0]] = self.N_pre.vecArray[i[0],j[0]] * _M.vecArray[i[0],j[0]] * DNinv.vecArray[i[0],j[0]]
             _NMD.local_to_local()
 
-            if adv_type==0:
-                adv2 = (_NMD.vecArray[i[0],j[0]] - _NMD.vecArray[i[-1],j[0]]) * dt / self.dx / (self.R * np.cos(self.yN[j[0]])) \
+            adv2 = (_NMD.vecArray[i[0],j[0]] - _NMD.vecArray[i[-1],j[0]]) \
                     * (_M.vecArray[i[0],j[0]] > 0) * (_M.vecArray[i[-1],j[0]] > 0) \
-                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[-1],j[0]] < Dmax)
-                adv3 = (_NMD.vecArray[i[1],j[0]] - _NMD.vecArray[i[ 0],j[0]]) * dt / self.dx / (self.R * np.cos(self.yN[j[0]])) \
+                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[-1],j[0]] < Dmax) \
+                    * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[-1],j[0]] > Dmin) \
+                    * dt / self.dx / (self.R * np.cos(self.yN[j[0]]))
+            adv3 = (_NMD.vecArray[i[1],j[0]] - _NMD.vecArray[i[ 0],j[0]]) \
                     * (_M.vecArray[i[1],j[0]] < 0) * (_M.vecArray[i[0],j[0]] < 0) \
-                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[ 1],j[0]] < Dmax)
-            elif adv_type==1:
-                adv2 = (_NMD.vecArray[i[0],j[0]] 
-                        - _NMD.vecArray[i[-1],j[0]] * (_M.vecArray[i[0],j[0]] > 0) * (_M.vecArray[i[-1],j[0]] > 0) \
-                                                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[-1],j[0]] < Dmax)
-                        ) * dt / self.dx / (self.R * np.cos(self.yN[j[0]]))
-                adv3 = (_NMD.vecArray[i[1],j[0]] * (_M.vecArray[i[1],j[0]] < 0) * (_M.vecArray[i[0],j[0]] < 0) \
-                                                 * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[ 1],j[0]] < Dmax)
-                        - _NMD.vecArray[i[ 0],j[0]]
-                        ) * dt / self.dx / (self.R * np.cos(self.yN[j[0]])) 
+                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[ 1],j[0]] < Dmax) \
+                    * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[ 1],j[0]] > Dmin) \
+                    * dt / self.dx / (self.R * np.cos(self.yN[j[0]])) 
                     
             self.N.vecArray[i[0], j[0]] -= (adv0 + adv1 + adv2 + adv3) * (tapering_factor_N==1)
             self.N.local_to_local()
