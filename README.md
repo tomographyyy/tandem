@@ -14,7 +14,7 @@
 
 
 ## Technical References
-- Takagawa, T., Allgeyer, S. & Cummins, P., Adjoint Synthesis for Trans-oceanic Tsunami Waveforms and Simultaneous Inversion of Fault Geometry and Slip Distribution (submitted) 
+- Takagawa, T., Allgeyer, S., & Cummins, P. (2024). Adjoint synthesis for trans‐oceanic tsunami waveforms and simultaneous inversion of fault geometry and slip distribution. Journal of Geophysical Research, [Solid Earth], 129(6). https://doi.org/10.1029/2024jb028750
 
 ## Installation
 TANDEM can be installed in the following 7 steps. This is an example for Ubuntu. Windows users are recommended to use WSL (Windows Subsystem for Linux).
