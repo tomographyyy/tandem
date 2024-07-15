@@ -1,4 +1,4 @@
-# TANDEM
+# [TANDEM](https://github.com/tomographyyy/tandem)
 
 
 **T**sunami **A**djoint simulator for **N**onpoint sources using **D**ispersive wave equations on a self-gravitating **E**arth **M**odel  
