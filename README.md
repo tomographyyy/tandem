@@ -18,9 +18,6 @@
 
 ## Installation
 TANDEM can be installed in the following 7 steps. This is an example for Ubuntu. Windows users are recommended to use WSL (Windows Subsystem for Linux).
-
-<details>
-  <summary>Show details</summary>
   
 ### Step 1. gfortran & pip
 ```sh
@@ -129,7 +126,6 @@ source ~/.bashrc
 ```sh
 python -m pip install git+https://github.com/tomographyyy/tandem.git
 ```
-</details>
 
 ## How To Run
 
