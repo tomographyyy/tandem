@@ -85,8 +85,8 @@ class Station(object):
         return flag
 
     def set_nearest_index(self, xh, yh, xextent, yextent, xmid, ymid, iextent, jextent):
-        self.dataframe["i"] = ""
-        self.dataframe["j"] = ""
+        self.dataframe["i"] = -1
+        self.dataframe["j"] = -1
         angle = Angle()
         drops =[]
         for k in range(len(self.dataframe)):
