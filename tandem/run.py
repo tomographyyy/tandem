@@ -143,7 +143,7 @@ class Tandem(object):
                             has_Boussinesq=settings["Boussinesq"],
                             outpath=settings["output_directory"],  
                             Manning=settings["Manning"], 
-                            Nonlinear=["advection"])
+                            Nonlinear=settings["advection"])
         self.ocean.load_bathymetry(settings["topo"]["file"], 
                                    depth=settings["topo"]["depth"], 
                                    lon=settings["topo"]["lon"], 

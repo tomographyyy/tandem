@@ -16,6 +16,8 @@ limitations under the License.
 
 from mpi4py import MPI
 import sys
+import time
+import traceback
 
 class DecoratorMPI(object):
     def finalize(self, func):
@@ -27,9 +29,6 @@ class DecoratorMPI(object):
                     print ("-----------")
                     print ("Exception:", str(e), flush=True)
                     print ("-----------")
-                    import traceback
-                    import sys
-                    import time
                     print ("-----------")
                     traceback.print_exc(file=sys.stdout)
                     print ("-----------")
@@ -37,7 +36,15 @@ class DecoratorMPI(object):
                     sys.stdout.flush()
                     sys.stderr.flush()
                 else:
+                    # give rank 0 time to report (and abort) if it failed too;
+                    # otherwise report this rank's error before aborting
                     time.sleep(1)
+                    rank = MPI.COMM_WORLD.rank
+                    print (f"----------- rank {rank}", flush=True)
+                    print (f"Exception on rank {rank}:", str(e), flush=True)
+                    traceback.print_exc(file=sys.stdout)
+                    print ("-----------", flush=True)
+                    sys.stdout.flush()
                 MPI.COMM_WORLD.Abort(1)
                 MPI.Finalize()
         return wrapper

@@ -116,10 +116,17 @@ class Okada(object):
         else:
             return self.__u_global(lonR, latR, strike, depth, AL, AW,
                             dip, rake, displacement)
-    def uz_horizontal(self, h_pad, uE, uN, uz):
+    def uz_horizontal(self, h_pad, uE, uN, uz, lat0):
+        """Vertical displacement due to horizontal motion on a sloping sea floor.
+
+        Args:
+            lat0 (float): reference latitude [degree] of the east-west grid
+                spacing. It must be the same on every MPI rank (e.g. the
+                latitude of the source centre); using the latitudes of the
+                local grid block made the result depend on the decomposition.
+        """
         dlon = self.lons[0,1] - self.lons[0,0]
         dlat = self.lats[1,0] - self.lats[0,0]
-        lat0 = np.mean(self.lats[:,0])
         dE = self.geod.a * np.deg2rad(dlon) * np.cos(np.deg2rad(lat0))
         dN = self.geod.b * np.deg2rad(dlat)
         dhdE = (h_pad[1:-1,2:] - h_pad[1:-1,:-2]) / (2 * dE)
@@ -129,5 +136,8 @@ class Okada(object):
             displacement, h_pad):
         uE, uN, uz = self.u_global(lonR, latR, strike, depth, AL, AW, 
                                 dip, rake, displacement)
-        uzh = self.uz_horizontal(h_pad, uE, uN, uz)
+        # source centre: mean latitude of the (sub)fault reference points,
+        # identical on all ranks
+        lat0 = np.mean(np.atleast_1d(latR))
+        uzh = self.uz_horizontal(h_pad, uE, uN, uz, lat0)
         return uz + uzh
