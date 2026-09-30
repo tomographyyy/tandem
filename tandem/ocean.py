@@ -446,7 +446,7 @@ class Ocean(object):
                     - Nm**2 * DNinv.vecArray[i[0],j[-1]] * (self.d.vecArray[i[0],j[-1]] < Dmax) * (self.d.vecArray[i[0],j[-1]] > Dmin) * mild_slope_n
                     ) \
                 * (Nc > 0) * dt / self.dy / self.R 
-            adv1 = (Np**2 * DNinv.vecArray[i[0],j[1]] * (self.d.vecArray[i[0],j[ 1]] < Dmax) * (self.d.vecArray[i[0],j[ 1]] > Dmin) * mild_slope_s
+            adv1 = (Np**2 * DNinv.vecArray[i[0],j[1]] * (self.d.vecArray[i[0],j[ 0]] < Dmax) * (self.d.vecArray[i[0],j[ 0]] > Dmin) * mild_slope_s
                     - Nc**2 * DNinv.vecArray[i[0],j[ 0]]
                     ) \
                 * (Nc < 0) * dt / self.dy / self.R
@@ -460,10 +460,11 @@ class Ocean(object):
 
             _water = self.tmpN2 # location="bottom"
             _water.vecArray[i[0],j[0]] = 1
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[0],j[-1]] > Dmin
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[0],j[ 0]] > Dmin
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[1],j[-1]] > Dmin
-            _water.vecArray[i[0],j[0]] *= _DN.vecArray[i[1],j[ 0]] > Dmin
+            # the four M faces around this N face (total depths on M faces: _DM)
+            _water.vecArray[i[0],j[0]] *= _DM.vecArray[i[0],j[-1]] > Dmin
+            _water.vecArray[i[0],j[0]] *= _DM.vecArray[i[0],j[ 0]] > Dmin
+            _water.vecArray[i[0],j[0]] *= _DM.vecArray[i[1],j[-1]] > Dmin
+            _water.vecArray[i[0],j[0]] *= _DM.vecArray[i[1],j[ 0]] > Dmin
             _water.local_to_local()
             
             _M = self.tmpM2
@@ -478,13 +479,13 @@ class Ocean(object):
 
             adv2 = (_NMD.vecArray[i[0],j[0]] - _NMD.vecArray[i[-1],j[0]]) \
                     * (_M.vecArray[i[0],j[0]] > 0) * (_M.vecArray[i[-1],j[0]] > 0) \
-                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[-1],j[0]] < Dmax) \
-                    * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[-1],j[0]] > Dmin) \
+                    * (self.dN.vecArray[i[0],j[0]] < Dmax) * (self.dN.vecArray[i[-1],j[0]] < Dmax) \
+                    * (self.dN.vecArray[i[0],j[0]] > Dmin) * (self.dN.vecArray[i[-1],j[0]] > Dmin) \
                     * dt / self.dx / (self.R * np.cos(self.yN[j[0]]))
             adv3 = (_NMD.vecArray[i[1],j[0]] - _NMD.vecArray[i[ 0],j[0]]) \
                     * (_M.vecArray[i[1],j[0]] < 0) * (_M.vecArray[i[0],j[0]] < 0) \
-                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[ 1],j[0]] < Dmax) \
-                    * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[ 1],j[0]] > Dmin) \
+                    * (self.dN.vecArray[i[0],j[0]] < Dmax) * (self.dN.vecArray[i[ 1],j[0]] < Dmax) \
+                    * (self.dN.vecArray[i[0],j[0]] > Dmin) * (self.dN.vecArray[i[ 1],j[0]] > Dmin) \
                     * dt / self.dx / (self.R * np.cos(self.yN[j[0]])) 
                     
             self.N.vecArray[i[0], j[0]] -= (adv0 + adv1 + adv2 + adv3) * (tapering_factor_N==1)
@@ -494,16 +495,23 @@ class Ocean(object):
         self.hx.set_diffx(self.h, boundary_type="none")
         self.hy.set_diffy(self.h, boundary_type="none")
 
-        if self.Nonlinear: #dM, dN change to d + h
+        if self.Nonlinear: #dM, dN change to d + h (total depth) for the gravity and friction terms
+            # Only faces with water on both sides carry flux (as the still-water dM, dN);
+            # without this mask the gravity term drives flux through coast faces and
+            # the continuity equation loses water there.
             i, j = self.M.get_slice()
             dM_copy = self.dM.vecArray[i[0],j[0]].copy()
-            self.dM.vecArray[i[0],j[0]] = (self.d.vecArray[i[0],j[0]] + self.d.vecArray[i[-1],j[0]]) / 2 \
-                                        + (self.h.vecArray[i[0],j[0]] + self.h.vecArray[i[-1],j[0]]) / 2
+            wet = (self.d.vecArray[i[0],j[0]] > 0) * (self.d.vecArray[i[-1],j[0]] > 0)
+            self.dM.vecArray[i[0],j[0]] = np.maximum(
+                (self.d.vecArray[i[0],j[0]] + self.d.vecArray[i[-1],j[0]]) / 2
+                + (self.h.vecArray[i[0],j[0]] + self.h.vecArray[i[-1],j[0]]) / 2, 0) * wet
             self.dM.local_to_local()
             i, j = self.N.get_slice()
             dN_copy = self.dN.vecArray[i[0],j[0]].copy()
-            self.dN.vecArray[i[0],j[0]] = (self.d.vecArray[i[0],j[0]] + self.d.vecArray[i[0],j[-1]]) / 2 \
-                                        + (self.h.vecArray[i[0],j[0]] + self.h.vecArray[i[0],j[-1]]) / 2
+            wet = (self.d.vecArray[i[0],j[0]] > 0) * (self.d.vecArray[i[0],j[-1]] > 0)
+            self.dN.vecArray[i[0],j[0]] = np.maximum(
+                (self.d.vecArray[i[0],j[0]] + self.d.vecArray[i[0],j[-1]]) / 2
+                + (self.h.vecArray[i[0],j[0]] + self.h.vecArray[i[0],j[-1]]) / 2, 0) * wet
             self.dN.local_to_local()
 
         if self.Manning==0:
@@ -562,15 +570,14 @@ class Ocean(object):
             self.N.vecArray[i[0], j[0]] = ((1 - fric) * N_pre - dNgrv) / (1 + fric)
             self.N.local_to_local()
 
-            if self.Nonlinear: # dM, dN change back to d without h
+        if self.Nonlinear: # dM, dN change back to d without h (also when Manning == 0)
+            i, j = self.M.get_slice()
+            self.dM.vecArray[i[0], j[0]] = dM_copy
+            self.dM.local_to_local()
 
-                i, j = self.M.get_slice()
-                self.dM.vecArray[i[0], j[0]] = dM_copy
-                self.dM.local_to_local()
-
-                i, j = self.N.get_slice()
-                self.dN.vecArray[i[0], j[0]] = dN_copy
-                self.dN.local_to_local()
+            i, j = self.N.get_slice()
+            self.dN.vecArray[i[0], j[0]] = dN_copy
+            self.dN.local_to_local()
         
             
 
