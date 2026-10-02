@@ -329,9 +329,14 @@ class Ocean(object):
 
     def update_MN_by_h(self, dt=1):
         if self.Nonlinear:
+            # Advection (first-order upwind, flux form) on faces whose total depth and the
+            # upwind face's total depth exceed Dmin. Earlier versions also required the upwind
+            # cell to be shallower than Dmax = 500 m and neighbouring total depths to differ by
+            # less than a factor 2 ("mild slope"), but applied that mask only to the upwind
+            # flux: the remaining central flux Mc^2/D acted as a drag M|M|/(D dx) wherever the
+            # mask was off (e.g. the whole deep ocean), growing as the grid was refined. The
+            # masks had been added against a blow-up caused by index errors fixed in #2.
             Dmin = 0.1
-            Dmax = 500
-            max_slope = 2
             
             # advection of M
             i, j = self.M.get_slice()
@@ -340,8 +345,6 @@ class Ocean(object):
             tapering_factor_M = taperI.dot(taperJ)
             
             DMinv = self.tmpM0
-            _dw = self.d.vecArray[i[-1],j[0]]
-            _de = self.d.vecArray[i[ 0],j[0]]
             _d = np.minimum(self.d.vecArray[i[-1],j[0]], self.d.vecArray[i[0],j[0]])
             _h = np.maximum((self.h.vecArray[i[-1],j[0]] + self.h_pre.vecArray[i[-1],j[0]]) / 2,
                             (self.h.vecArray[i[ 0],j[0]] + self.h_pre.vecArray[i[ 0],j[0]]) / 2)
@@ -350,14 +353,8 @@ class Ocean(object):
             DMinv.vecArray[i[0], j[0]] = np.divide(1, _D, out=np.zeros_like(_D), where=_D>Dmin)
             DMinv.local_to_local()
 
-            slope_w = np.divide(DMinv.vecArray[i[0], j[0]], DMinv.vecArray[i[-1], j[0]], 
-                                out=np.full(_dw.shape, 100.0), 
-                                where=(DMinv.vecArray[i[0], j[0]] * DMinv.vecArray[i[-1], j[0]] > 0))
-            slope_e = np.divide(DMinv.vecArray[i[0], j[0]], DMinv.vecArray[i[ 1], j[0]], 
-                                out=np.full(_de.shape, 100.0), 
-                                where=(DMinv.vecArray[i[0], j[0]] * DMinv.vecArray[i[ 1], j[0]] > 0))
-            mild_slope_w = (slope_w < max_slope) * (slope_w > 1/max_slope)
-            mild_slope_e = (slope_e < max_slope) * (slope_e > 1/max_slope)
+            wet_w = DMinv.vecArray[i[0], j[0]] * DMinv.vecArray[i[-1], j[0]] > 0
+            wet_e = DMinv.vecArray[i[0], j[0]] * DMinv.vecArray[i[ 1], j[0]] > 0
 
 
             Mm = self.M_pre.vecArray[i[-1],j[0]]
@@ -365,10 +362,10 @@ class Ocean(object):
             Mp = self.M_pre.vecArray[i[ 1],j[0]]
 
             adv0 = (Mc**2 * DMinv.vecArray[i[0],j[0]] 
-                    - Mm**2 * DMinv.vecArray[i[-1],j[0]] * (self.d.vecArray[i[-1],j[0]] < Dmax) * (self.d.vecArray[i[-1],j[0]] > Dmin) * mild_slope_w
+                    - Mm**2 * DMinv.vecArray[i[-1],j[0]] * (self.d.vecArray[i[-1],j[0]] > Dmin) * wet_w
                     ) \
                 * (Mc > 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) 
-            adv1 = (Mp**2 * DMinv.vecArray[i[1],j[0]] * (self.d.vecArray[i[0],j[0]] < Dmax) * (self.d.vecArray[i[0],j[0]] > Dmin) * mild_slope_e
+            adv1 = (Mp**2 * DMinv.vecArray[i[1],j[0]] * (self.d.vecArray[i[0],j[0]] > Dmin) * wet_e
                     - Mc**2 * DMinv.vecArray[i[ 0],j[0]]
                     ) \
                 * (Mc < 0) * dt / self.dx / (self.R * np.cos(self.yM[j[0]])) 
@@ -400,12 +397,10 @@ class Ocean(object):
 
             adv2 = (_MND.vecArray[i[0],j[0]] - _MND.vecArray[i[0],j[-1]]) \
                     * (_N.vecArray[i[0],j[0]] > 0) * (_N.vecArray[i[0],j[-1]] > 0) \
-                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[-1]] < Dmax) \
                     * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[0],j[-1]] > Dmin) \
                     * dt / self.dy / self.R 
             adv3 = (_MND.vecArray[i[0],j[1]] - _MND.vecArray[i[0],j[ 0]]) \
                     * (_N.vecArray[i[0],j[1]] < 0) * (_N.vecArray[i[0],j[0]] < 0) \
-                    * (self.dM.vecArray[i[0],j[0]] < Dmax) * (self.dM.vecArray[i[0],j[ 1]] < Dmax) \
                     * (self.dM.vecArray[i[0],j[0]] > Dmin) * (self.dM.vecArray[i[0],j[ 1]] > Dmin) \
                     * dt / self.dy / self.R 
             
@@ -419,8 +414,6 @@ class Ocean(object):
             tapering_factor_N = taperI.dot(taperJ)
 
             DNinv = self.tmpN1
-            _dn = self.d.vecArray[i[0],j[-1]]
-            _ds = self.d.vecArray[i[0],j[ 0]]
             _d = np.minimum(self.d.vecArray[i[0],j[-1]], self.d.vecArray[i[0],j[0]])
             _h = np.maximum((self.h.vecArray[i[0],j[-1]] + self.h_pre.vecArray[i[0],j[-1]]) / 2,
                             (self.h.vecArray[i[0],j[ 0]] + self.h_pre.vecArray[i[0],j[ 0]]) / 2)
@@ -429,24 +422,18 @@ class Ocean(object):
             DNinv.vecArray[i[0], j[0]] = np.divide(1, _D, out=np.zeros_like(_D), where=_D>Dmin)
             DNinv.local_to_local()
 
-            slope_n = np.divide(DNinv.vecArray[i[0], j[0]], DNinv.vecArray[i[0], j[-1]], 
-                                out=np.full(_dn.shape, 100.0), 
-                                where=(DNinv.vecArray[i[0], j[0]] * DNinv.vecArray[i[0], j[-1]] > 0))
-            slope_s = np.divide(DNinv.vecArray[i[0], j[0]], DNinv.vecArray[i[0], j[ 1]], 
-                                out=np.full(_ds.shape, 100.0), 
-                                where=(DNinv.vecArray[i[0], j[0]] * DNinv.vecArray[i[0], j[ 1]] > 0))
-            mild_slope_n = (slope_n < max_slope) * (slope_n > 1/max_slope)
-            mild_slope_s = (slope_s < max_slope) * (slope_s > 1/max_slope)
+            wet_n = DNinv.vecArray[i[0], j[0]] * DNinv.vecArray[i[0], j[-1]] > 0
+            wet_s = DNinv.vecArray[i[0], j[0]] * DNinv.vecArray[i[0], j[ 1]] > 0
 
             Nm = self.N_pre.vecArray[i[0],j[-1]]
             Nc = self.N_pre.vecArray[i[0],j[ 0]]
             Np = self.N_pre.vecArray[i[0],j[ 1]]
             
             adv0 = (Nc**2 * DNinv.vecArray[i[0],j[0]] 
-                    - Nm**2 * DNinv.vecArray[i[0],j[-1]] * (self.d.vecArray[i[0],j[-1]] < Dmax) * (self.d.vecArray[i[0],j[-1]] > Dmin) * mild_slope_n
+                    - Nm**2 * DNinv.vecArray[i[0],j[-1]] * (self.d.vecArray[i[0],j[-1]] > Dmin) * wet_n
                     ) \
                 * (Nc > 0) * dt / self.dy / self.R 
-            adv1 = (Np**2 * DNinv.vecArray[i[0],j[1]] * (self.d.vecArray[i[0],j[ 0]] < Dmax) * (self.d.vecArray[i[0],j[ 0]] > Dmin) * mild_slope_s
+            adv1 = (Np**2 * DNinv.vecArray[i[0],j[1]] * (self.d.vecArray[i[0],j[ 0]] > Dmin) * wet_s
                     - Nc**2 * DNinv.vecArray[i[0],j[ 0]]
                     ) \
                 * (Nc < 0) * dt / self.dy / self.R
@@ -479,12 +466,10 @@ class Ocean(object):
 
             adv2 = (_NMD.vecArray[i[0],j[0]] - _NMD.vecArray[i[-1],j[0]]) \
                     * (_M.vecArray[i[0],j[0]] > 0) * (_M.vecArray[i[-1],j[0]] > 0) \
-                    * (self.dN.vecArray[i[0],j[0]] < Dmax) * (self.dN.vecArray[i[-1],j[0]] < Dmax) \
                     * (self.dN.vecArray[i[0],j[0]] > Dmin) * (self.dN.vecArray[i[-1],j[0]] > Dmin) \
                     * dt / self.dx / (self.R * np.cos(self.yN[j[0]]))
             adv3 = (_NMD.vecArray[i[1],j[0]] - _NMD.vecArray[i[ 0],j[0]]) \
                     * (_M.vecArray[i[1],j[0]] < 0) * (_M.vecArray[i[0],j[0]] < 0) \
-                    * (self.dN.vecArray[i[0],j[0]] < Dmax) * (self.dN.vecArray[i[ 1],j[0]] < Dmax) \
                     * (self.dN.vecArray[i[0],j[0]] > Dmin) * (self.dN.vecArray[i[ 1],j[0]] > Dmin) \
                     * dt / self.dx / (self.R * np.cos(self.yN[j[0]])) 
                     
