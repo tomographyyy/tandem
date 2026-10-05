@@ -78,7 +78,7 @@ class Ocean(object):
     def __init__(self, shape, extent=(0,1,1,0), 
                 CLV=0, damping_factor=0.1, hyperbolic_r=3, 
                 has_Boussinesq=False, outpath="", filter_radius=1, 
-                Manning=0., Nonlinear=False):
+                Manning=0., Nonlinear=False, half_step_start=True):
         self.comm = PETSc.COMM_WORLD
         self.rank = self.comm.rank
         self.geod = Geod(ellps="WGS84")
@@ -96,6 +96,12 @@ class Ocean(object):
         self.dy = np.abs(extent[3] - extent[2]) / shape[1]
         self.Manning=Manning
         self.Nonlinear=Nonlinear
+        # half_step_start: the first momentum update of a run started from rest (M = N = 0)
+        # uses dt/2, so that M = 0 is at t = 0 and the fluxes are at t = (n + 1/2) dt.
+        # False reproduces tandem v1.0, whose full first step (M = 0 at t = -dt/2) shifts
+        # the solution about dt/2 earlier in time.
+        self.half_step_start = half_step_start
+        self.n_forward = 0
         # DMDA global
         self.d = DMStagDA() # depth
         self.h = DMStagDA() # water surface height
@@ -1387,19 +1393,22 @@ class Ocean(object):
         return 0
 
     def forward(self, dt, with_Coriolis=True, is_reversal=False, with_sponge=True, with_Sommerfeld=True):
+        # time step of the momentum update: dt/2 in the first step (see half_step_start)
+        dtm = 0.5 * dt if (self.n_forward == 0 and self.half_step_start) else dt
+        self.n_forward += 1
         self.copy_to_pre()
         if with_Sommerfeld:
-            self.update_MN_by_Sommerfeld(dt)
-        self.update_MN_by_h(dt)
+            self.update_MN_by_Sommerfeld(dtm)
+        self.update_MN_by_h(dtm)
         if with_Coriolis:
-            self.update_MN_by_Coriolis(dt, is_reversal=is_reversal)
+            self.update_MN_by_Coriolis(dtm, is_reversal=is_reversal)
         if with_sponge:
-            self.update_MN_by_sponge(dt)
+            self.update_MN_by_sponge(dtm)
         if self.has_Boussinesq:
             self.update_b_by_h()
             self.update_Phai_by_b()
             self.update_Phai_by_tapering()
-            self.update_MN_by_Phai(dt)
+            self.update_MN_by_Phai(dtm)
         self.update_AMBN_by_MN(dt)
         if self.solid_earth is None:
             self.update_h_by_AMBN(dt, is_intermediate=False)

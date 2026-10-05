@@ -45,6 +45,7 @@ settings = dict(
     sht_reduction= "auto", # ["auto", 1-5]
     resolution= 480, # [15, 30, 60, 120, 240, 480 sec]
     Manning=0.0, # 0.025
+    half_step_start=True, # first momentum update with dt/2 (M = 0 at t = 0); False: tandem v1.0 (full first step)
     sponge=dict(
         width=40,
         damping_factor=0.01
@@ -143,7 +144,8 @@ class Tandem(object):
                             has_Boussinesq=settings["Boussinesq"],
                             outpath=settings["output_directory"],  
                             Manning=settings["Manning"], 
-                            Nonlinear=settings["advection"])
+                            Nonlinear=settings["advection"],
+                            half_step_start=settings.get("half_step_start", True))
         self.ocean.load_bathymetry(settings["topo"]["file"], 
                                    depth=settings["topo"]["depth"], 
                                    lon=settings["topo"]["lon"], 
@@ -255,7 +257,8 @@ class Tandem(object):
             if step % self.chunk_step==0:
                 save_steps = step + np.arange(self.chunk_size) * self.rec_interval_step
                 time_h = save_steps * self.dt
-                time_MN = time_h + 0.5 * self.dt 
+                # M and N recorded before the step-th update are M^(step - 1/2)
+                time_MN = time_h - 0.5 * self.dt
                 if "h" in self.save_values:
                     xds_record_h = xr.Dataset({"h":self.ocean.get_xr_data_array_recorder(self.ocean.h, time_h, attrs=attrs_h)})
                 if "M" in self.save_values:
