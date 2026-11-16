@@ -5,7 +5,7 @@
 **T**sunami **A**djoint simulator for **N**onpoint sources using **D**ispersive wave equations on a self-gravitating **E**arth **M**odel  
 
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10995292.svg)](https://doi.org/10.5281/zenodo.10995292)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10963819.svg)](https://doi.org/10.5281/zenodo.10963819)
 
 
 ![Fig01](https://github.com/tomographyyy/tandem/assets/34155315/95713702-778b-476f-a0bf-944c79ae1aa9)

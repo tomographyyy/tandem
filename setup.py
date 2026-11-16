@@ -6,7 +6,7 @@ def load_requires_from_file(filepath):
 
 setup(
     name='tandem',
-    version="0.0.1",
+    version="1.1.0",
     description="Tsunami Adjoint Simulator",
     author='Tomohiro TAKAGAWA',
     packages=find_packages(),
